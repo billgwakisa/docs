@@ -1,0 +1,59 @@
+---
+title: "Onboarding — Businesses & FSPs"
+description: "How to join Bridge: business onboarding, FSP integrations, environments, credentials, and scopes."
+icon: "user-plus"
+---
+
+<Note>
+FSP onboarding is handled internally with our partnerships team. If you represent an FSP, please contact us via Support.
+</Note>
+
+## Business onboarding
+
+Onboarding is straightforward. Sign up in the Dashboard to get instant sandbox access — no waiting. From there, you can generate API credentials and start calling the APIs immediately.
+
+<Card title="Open Dashboard" icon="window" href="https://app.bridge.usereli.tech" horizontal>
+  Create your sandbox account, generate credentials, and start building.
+</Card>
+
+<Steps>
+<Step title="Sign up — instant sandbox">
+Create your account in the Dashboard. Your sandbox org and initial credentials are issued immediately.
+</Step>
+<Step title="Pick products and scopes">
+Choose Wallets, Lending, Payments, Open Banking; we assign least‑privilege scopes.
+</Step>
+<Step title="Bind to an FSP">
+Tell us which bank/PSP/MNO to use per product. We configure adapters and tenants (optional in sandbox; required for production).
+</Step>
+<Step title="Integrate & test">
+Use JWTs from Management JWKS, call product APIs, verify webhooks and reconciliation.
+</Step>
+<Step title="Go live">
+Submit KYB and complete checks to enable production access.
+</Step>
+</Steps>
+
+<!-- FSP onboarding details removed (handled internally) -->
+
+## Environments & credentials
+
+- Environments: `sandbox` and `production`
+- Auth: JWT Bearer; Bridge Services verify tokens using Management JWKS
+- Scopes: route‑scoped permissions; example `wms:write` allows wallet mutations
+
+```json Example JWT claims
+{
+  "iss": "bridge-mgmt",
+  "aud": "bridge-router",
+  "sub": "business:123",
+  "scopes": ["wms:read", "lms:write"]
+}
+```
+
+## Next steps
+
+- Read the category that matches your use case:
+  - Embedded Finance, Payments & Transfers, Open Banking & Identity, FSP Integrations
+- Or jump to your first API calls in the service pages below.
+

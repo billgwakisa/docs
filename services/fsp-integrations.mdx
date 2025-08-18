@@ -1,0 +1,250 @@
+---
+title: "FSP Integrations"
+description: "Adapters to banks/PSPs/MNOs: Fineract, TIPS/TanQR, GL feeds, and regulatory exports."
+icon: "building-columns"
+---
+
+## What it is
+
+Pre‑built adapters and operational integrations that let partners connect once and serve many businesses while retaining control and compliance.
+
+## Capabilities
+
+- Fineract ledger & loans (mapping, journals, schedules)
+- Trust/float account flows and settlement files
+- Payments rails (TIPS/TanQR, PSPs, MNO wallets)
+- Regulatory and bank reporting bundles
+
+## Get a token
+
+Use your `keyId` and `secret` to get a Bearer token.
+
+```http
+POST /api/generate-token
+Content-Type: application/json
+
+{
+  "keyId": "00000000-0000-4000-8000-000000000000",
+  "secret": "<your-api-secret>"
+}
+```
+
+Use the token for all subsequent requests:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Discover available FSPs
+
+List FSP connectors available to your business and environment.
+
+```http
+GET /api/v1/fsps
+Authorization: Bearer <token>
+```
+
+```json Response
+[
+  {
+    "id": "fspi_nmb",
+    "name": "NMB Bank",
+    "category": "bank",
+    "products": ["payments", "tiss", "international"],
+    "status": "active"
+  },
+  {
+    "id": "fspi_psp_x",
+    "name": "PSP X",
+    "category": "psp",
+    "products": ["payments"],
+    "status": "active"
+  }
+]
+```
+
+<Note>
+FSP IDs are used in each API call to route to the correct adapter.
+</Note>
+
+## Aggregated payments API
+
+Bridge aggregates similar payment rails behind generic endpoints. Supply `fspId` to target a specific connector; payloads are normalized from bank specs (e.g., NMB).
+
+### Bulk payouts
+
+```http
+POST /api/v1/payments/bulk
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "fspId": "fspi_nmb",
+  "batchId": "334877144",
+  "batchDate": "20210810",
+  "institution": "ACME",
+  "accountCode": "24710004585",
+  "totalAmount": "50000.00",
+  "userId": "user.id",
+  "callbackUrl": "https://example.com/webhooks/payments",
+  "beneficiaries": [
+    {
+      "name": "NOEL EMMANUEL MAHUNDA",
+      "currency": "TZS",
+      "amount": "50000.00",
+      "account": "41510027904",
+      "channel": "INTERNAL",
+      "destination": "NMB",
+      "endToEndId": "2000000841",
+      "ownReference": "18000",
+      "narration": "Payout"
+    }
+  ]
+}
+```
+
+```json Response (normalized)
+{
+  "status": "accepted",
+  "batchId": "334877144",
+  "providerFileNumber": "263145370909",
+  "message": "Batch submitted"
+}
+```
+
+### Bulk status
+
+```http
+POST /api/v1/payments/bulk/status
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "fspId": "fspi_nmb",
+  "batchId": "BT1726547346",
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+```json Response (normalized)
+{
+  "batchId": "BT1726547346",
+  "summary": { "success": 2, "failed": 0, "total": 2 },
+  "records": [
+    {
+      "recRefId": "BT1726547346000002",
+      "valueDate": "2024-09-17T00:00:00",
+      "beneficiary": { "name": "XXXX", "account": "41510027904" },
+      "amountMinor": 5000000,
+      "currency": "TZS",
+      "status": "COMPLETED",
+      "destination": "NMB",
+      "ownReference": "18000"
+    }
+  ]
+}
+```
+
+### TISS/RTGS payout
+
+```http
+POST /api/v1/payments/tiss
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "fspId": "fspi_nmb",
+  "userId": "user.id",
+  "batchId": "TAN0032901",
+  "debitAccountId": "52910000381",
+  "creditAccountId": "9120000885361",
+  "beneficiaryAccountName": "Mbogo Mining and General Supply Ltd",
+  "beneficiaryBankCode": "SBICTZTXXXX",
+  "amountMinor": 600,
+  "currency": "USD",
+  "charges": "SHARED",
+  "paymentDetails": "/INV/",
+  "paymentDetailsTwo": "Paymentdetailstwovalue",
+  "paymentDetailsThree": "paymentDetailsThreevalue"
+}
+```
+
+```json Response (normalized)
+{
+  "status": "accepted",
+  "paymentId": "BRDOPV18TI",
+  "providerGroupId": "504089"
+}
+```
+
+### International payout
+
+```http
+POST /api/v1/payments/international
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "fspId": "fspi_nmb",
+  "userId": "user.id",
+  "debitAccountId": "52910000381",
+  "creditAccountId": "021721745702861Z",
+  "beneficiaryAccountName": "BeneAcctName",
+  "beneficiaryAddress": { "line1": "BeneAddLine1", "city": "Kinshasa", "country": "AD" },
+  "beneficiaryBankCode": "UBSWCHZH12B",
+  "amountMinor": 25000,
+  "currency": "USD",
+  "charges": "FULL",
+  "paymentDetails": "/INV/",
+  "paymentDetailsTwo": "Payment remarks 1",
+  "paymentDetailsThree": "Payment remarks 2",
+  "attachments": [{ "fileExtension": "jpg", "file": "<base64>" }]
+}
+```
+
+```json Response (normalized)
+{
+  "status": "accepted",
+  "paymentId": "BRDOPV18TI"
+}
+```
+
+## Reporting
+
+Download normalized reports regardless of provider.
+
+```http
+GET /api/v1/payments/reports/summary?from=2025-01-01&to=2025-01-31&fspId=fspi_nmb
+GET /api/v1/payments/reports/journals?from=2025-01-01&to=2025-01-31&fspId=fspi_nmb
+```
+
+## Error handling
+
+All adapters map provider error codes to a consistent schema:
+
+```json
+{
+  "error": {
+    "code": "BAD_REQUEST",
+    "providerCode": "01",
+    "message": "Invalid userId value supplied",
+    "details": { "field": "userId" }
+  }
+}
+```
+
+## Management API (for operators)
+
+```http
+POST /v1/fsps
+GET  /v1/fsps
+PUT  /v1/fsps/{id}
+POST /v1/fsps/{id}/test-connection
+```
+
+## Operations & SLAs
+
+- Rate limits, incident processes, callback health checks
+- Standardized error codes and status mapping
+

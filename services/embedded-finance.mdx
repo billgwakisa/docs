@@ -1,0 +1,56 @@
+---
+title: "Embedded Finance"
+description: "Wallets, Lending, Credit Scoring, and Reporting — product overview and API reference."
+icon: "wallet"
+---
+
+## What it is
+
+Launch wallets and lending in your app while the FSP remains custodian. Credit scoring plugs into lending decisions. Journals and reports support reconciliation.
+
+## Capabilities
+
+- Wallets: open wallet, balance, statements, top‑up, payout
+- Lending: apply, approve, disburse, schedule, repay, reschedule
+- Credit Scoring: retrieve and refresh scores
+- Reporting: GL/journal exports, portfolio and settlement summaries
+
+<Note>
+Ledgers live at the FSP; Bridge stores mapping IDs and audit logs. All PII stays in KYC; services use `customerId`.
+</Note>
+
+## API reference
+
+<Cards>
+  <Card title="LMS — Lending APIs" icon="hand-holding-dollar" href="/services/embedded-finance/lms" />
+  <Card title="WMS — Wallet APIs" icon="wallet" href="/services/embedded-finance/wms" />
+</Cards>
+
+---
+
+### Wallets (WMS)
+
+```http
+POST /v1/wallets
+GET  /v1/wallets/{walletId}
+GET  /v1/wallets/{walletId}/transactions
+POST /v1/wallets/{walletId}/topup
+POST /v1/wallets/{walletId}/payout
+```
+
+### Lending (LMS)
+
+```http
+POST /v1/lms/loans
+POST /v1/lms/loans/{id}/approve
+POST /v1/lms/loans/{id}/disburse
+GET  /v1/lms/loans/{id}
+GET  /v1/lms/loans/{id}/schedule
+```
+
+## Auth & reliability
+
+- Auth: JWT Bearer; tokens verified via Management JWKS; scopes like `wms:*`, `lms:write`
+- Idempotency: provide `Idempotency-Key` header on mutations
+- Webhooks: delivery with retries; sign with shared secret
+

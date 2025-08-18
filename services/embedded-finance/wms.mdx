@@ -1,0 +1,193 @@
+---
+title: "WMS — Wallet APIs"
+description: "Open wallets, list transactions, top-up and payout."
+icon: "wallet"
+---
+
+## Overview
+
+Wallet APIs for account creation, balance/transactions, and funding/withdrawals.
+
+<Info>
+Auth: JWT Bearer verified via Management JWKS. Typical scopes: `wms:read`, `wms:write`.
+</Info>
+
+## Get a token
+
+Generate a short‑lived token using your `keyId` and `secret`.
+
+```http
+POST /api/generate-token
+Content-Type: application/json
+
+{
+  "keyId": "00000000-0000-4000-8000-000000000000",
+  "secret": "<your-api-secret>"
+}
+```
+
+```json Response
+{
+  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresAt": "2025-01-01T12:00:00.000Z",
+  "businessId": "11111111-2222-3333-4444-555555555555",
+  "environment": "sandbox",
+  "scopes": ["wms:read", "wms:write"]
+}
+```
+
+Use the token in the `Authorization` header for all subsequent requests:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Endpoints
+
+```http
+POST /v1/wallets
+GET  /v1/wallets/{walletId}
+GET  /v1/wallets/{walletId}/transactions
+POST /v1/wallets/{walletId}/topup
+POST /v1/wallets/{walletId}/payout
+```
+
+### Open wallet
+
+```http
+POST /api/v1/wallets
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "businessId": "11111111-2222-3333-4444-555555555555",
+  "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "productCode": "SAVINGS_BASIC"
+}
+```
+
+```json Response
+{
+  "id": "a1b2c3d4-0000-0000-0000-000000000000",
+  "businessId": "11111111-2222-3333-4444-555555555555",
+  "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "productCode": "SAVINGS_BASIC",
+  "fspAccountId": "4921",
+  "createdAt": "2025-01-01T10:00:00.000Z",
+  "updatedAt": "2025-01-01T10:00:01.000Z"
+}
+```
+
+### Get wallet
+
+```http
+GET /api/v1/wallets/{walletId}
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "id": "a1b2c3d4-0000-0000-0000-000000000000",
+  "businessId": "11111111-2222-3333-4444-555555555555",
+  "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "productCode": "SAVINGS_BASIC",
+  "fspAccountId": "4921",
+  "balanceMinor": 0,
+  "createdAt": "2025-01-01T10:00:00.000Z",
+  "updatedAt": "2025-01-01T10:00:01.000Z"
+}
+```
+
+### List transactions
+
+```http
+GET /api/v1/wallets/{walletId}/transactions
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "items": [
+    {
+      "id": "tx_01H...",
+      "walletId": "a1b2c3d4-0000-0000-0000-000000000000",
+      "type": "topup",
+      "amountMinor": "100000",
+      "currency": "TZS",
+      "reference": null,
+      "externalId": null,
+      "createdAt": "2025-01-01T10:05:00.000Z"
+    }
+  ]
+}
+```
+
+### Top up
+
+```http
+POST /api/v1/wallets/{walletId}/topup
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "amountMinor": 100000,
+  "currency": "TZS"
+}
+```
+
+```json Response
+{
+  "status": "accepted",
+  "transactionId": "tx_01H..."
+}
+```
+
+### Payout
+
+```http
+POST /api/v1/wallets/{walletId}/payout
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "amountMinor": 50000,
+  "currency": "TZS"
+}
+```
+
+```json Response
+{
+  "status": "accepted",
+  "transactionId": "tx_01H..."
+}
+```
+
+## API reference
+
+<Cards>
+  <Card title="Swagger UI" icon="book" href="https://bridge-services.example.com/docs" />
+  <Card title="OpenAPI JSON" icon="file-code" href="https://bridge-services.example.com/docs/json" />
+</Cards>
+
+## Reports
+
+<Warning>
+Planned. Wallet summaries and transaction exports for reconciliation.
+</Warning>
+
+```http
+GET /api/v1/wallets/reports/summary?from=2025-01-01&to=2025-01-31
+GET /api/v1/wallets/reports/journals?from=2025-01-01&to=2025-01-31
+```
+
+## Accounting
+
+<Warning>
+Planned. Trust/float account positions and GL export endpoints.
+</Warning>
+
+```http
+GET /api/v1/wallets/accounting/positions?asOf=2025-01-31
+GET /api/v1/wallets/accounting/exports?from=2025-01-01&to=2025-01-31
+```
+

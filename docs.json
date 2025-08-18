@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Bridge Documentation",
   "colors": {
-    "primary": "#16A34A",
+    "primary": "#15803d",
     "light": "#07C983",
-    "dark": "#15803D"
+    "dark": "#18181b"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -17,52 +17,53 @@
             "group": "Getting started",
             "pages": [
               "index",
-              "quickstart",
-              "development"
-            ]
-          },
-          {
-            "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "onboarding"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Embedded Finance",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Product APIs",
             "pages": [
-              "api-reference/introduction"
+              "services/embedded-finance",
+              "services/embedded-finance/lms",
+              "services/embedded-finance/wms"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Payments & Transfers",
+        "groups": [
           {
-            "group": "Endpoint examples",
+            "group": "Product APIs",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "services/payments-transfers"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Open Banking & Identity",
+        "groups": [
+          {
+            "group": "Product APIs",
+            "pages": [
+              "services/open-banking-identity"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "FSP Integrations",
+        "groups": [
+          {
+            "group": "Product APIs",
+            "pages": [
+              "services/fsp-integrations"
             ]
           }
         ]
@@ -71,19 +72,19 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Website",
+          "href": "https://bridge.example.com",
+          "icon": "globe"
         },
         {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
+          "anchor": "Dashboard",
+          "href": "https://app.bridge.usereli.tech",
+          "icon": "window"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Support",
+          "href": "mailto:support@usereli.tech",
+          "icon": "headset"
         }
       ]
     }
@@ -96,13 +97,13 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:support@bridge.example.com"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "href": "https://app.bridge.usereli.tech"
     }
   },
   "contextual": {

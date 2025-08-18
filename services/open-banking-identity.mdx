@@ -1,0 +1,32 @@
+---
+title: "Open Banking & Identity"
+description: "Account verification, consented data access, and KYC sharing."
+icon: "id-card"
+---
+
+## What it is
+
+Join identity and open banking: verify accounts, manage consent, and access balances/history with KYC as the authoritative PII store.
+
+## Capabilities
+
+- Account ownership verification
+- Consent management and KYC sharing
+- Balance and transaction history (subject to consent)
+
+## API reference
+
+```http
+POST /v1/ob/account-verification
+POST /v1/customers
+POST /v1/customers/{customerId}/consent
+GET  /v1/customers/{customerId}/consents
+GET  /v1/ob/accounts/{accountId}/balance
+GET  /v1/ob/accounts/{accountId}/transactions
+```
+
+## Security & privacy
+
+- Consent‑scoped access; masked responses if limited
+- Tokens and bank credentials stored encrypted; access audited
+

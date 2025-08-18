@@ -1,0 +1,287 @@
+---
+title: "LMS — Lending APIs"
+description: "Apply, approve, disburse, schedule, and manage loans."
+icon: "hand-holding-dollar"
+---
+
+## Overview
+
+Loan lifecycle APIs: create applications, approve, disburse to a wallet, fetch schedules and status.
+
+<Info>
+Auth: JWT Bearer verified via Management JWKS. Typical scopes: `lms:read`, `lms:write`.
+</Info>
+
+## Get a token
+
+Generate a short‑lived token using your `keyId` and `secret`.
+
+```http
+POST /api/generate-token
+Content-Type: application/json
+
+{
+  "keyId": "00000000-0000-4000-8000-000000000000",
+  "secret": "<your-api-secret>"
+}
+```
+
+```json Response
+{
+  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresAt": "2025-01-01T12:00:00.000Z",
+  "businessId": "11111111-2222-3333-4444-555555555555",
+  "environment": "sandbox",
+  "scopes": ["lms:read", "lms:write"]
+}
+```
+
+Use the token in the `Authorization` header for all subsequent requests:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Endpoints
+
+```http
+POST /v1/lms/loans
+POST /v1/lms/loans/{id}/approve
+POST /v1/lms/loans/{id}/disburse
+GET  /v1/lms/loans/{id}
+GET  /v1/lms/loans         # list
+POST /v1/lms/loans/{id}/repayments
+```
+
+## Product management
+
+Manage loan products used when creating loans.
+
+```http
+POST /api/v1/lms/lending/products
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "code": "LOAN_BASIC",
+  "name": "Basic Loan",
+  "currency": "TZS",
+  "config": { "minPrincipal": 100000, "maxPrincipal": 10000000, "tenorMonths": 12 },
+  "accountingMapping": { "glAsset": "1101", "glIncome": "4101" }
+}
+```
+
+```json Response
+{
+  "productCode": "LOAN_BASIC",
+  "type": "loan",
+  "name": "Basic Loan",
+  "currency": "TZS",
+  "config": { "minPrincipal": 100000, "maxPrincipal": 10000000, "tenorMonths": 12 },
+  "accountingMapping": { "glAsset": "1101", "glIncome": "4101" },
+  "status": "draft",
+  "version": 1,
+  "createdAt": "2025-01-01T10:00:00.000Z",
+  "updatedAt": "2025-01-01T10:00:00.000Z"
+}
+```
+
+```http
+GET /api/v1/lms/lending/products
+Authorization: Bearer <token>
+```
+
+```http
+GET /api/v1/lms/lending/products/{code}
+Authorization: Bearer <token>
+```
+
+```http
+POST /api/v1/lms/lending/products/{code}/publish
+Authorization: Bearer <token>
+```
+
+<Note>
+Publishing marks a product as available and increments its version. Creating the actual product in the FSP (e.g., Fineract) may be automated in future.
+</Note>
+
+## Transactions
+
+### Repay loan
+
+```http
+POST /api/v1/lms/loans/{loanId}/repayments
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "amountMinor": 200000,
+  "currency": "TZS"
+}
+```
+
+```json Response
+{
+  "status": "repayment-accepted",
+  "loanId": "e5c8c7d2-...",
+  "amountMinor": 200000,
+  "currency": "TZS"
+}
+```
+
+### List loans
+
+```http
+GET /api/v1/lms/loans?status=active&productCode=LOAN_BASIC&customerId=...
+Authorization: Bearer <token>
+```
+
+## Repayment schedules
+
+<Warning>
+Planned. Endpoint will return an amortization schedule and next due installment. Proposed:
+</Warning>
+
+```http
+GET /api/v1/lms/loans/{loanId}/schedule
+Authorization: Bearer <token>
+```
+
+```json Planned Response
+{
+  "loanId": "e5c8c7d2-...",
+  "currency": "TZS",
+  "installments": [
+    { "number": 1, "dueDate": "2025-02-01", "principalMinor": 150000, "interestMinor": 50000, "totalMinor": 200000, "paid": false },
+    { "number": 2, "dueDate": "2025-03-01", "principalMinor": 150000, "interestMinor": 40000, "totalMinor": 190000, "paid": false }
+  ],
+  "nextDue": { "number": 1, "dueDate": "2025-02-01", "totalMinor": 200000 }
+}
+```
+
+## Reports
+
+<Warning>
+Planned. Journal and portfolio reports per business and product. Examples:
+</Warning>
+
+```http
+GET /api/v1/lms/reports/journals?from=2025-01-01&to=2025-01-31
+GET /api/v1/lms/reports/portfolio?asOf=2025-01-31
+```
+
+## Accounting
+
+Operator/internal endpoint for GL accounts sourced from the FSP.
+
+```http
+GET /api/v1/lms/internal/lms/glaccounts
+Authorization: Bearer <token>
+```
+
+### Create loan
+
+```http
+POST /api/v1/lms/loans
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "businessId": "11111111-2222-3333-4444-555555555555",
+  "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "productCode": "LOAN_BASIC",
+  "amountMinor": 2500000,
+  "currency": "TZS"
+}
+```
+
+```json Response
+{
+  "loanId": "e5c8c7d2-0000-0000-0000-000000000000",
+  "fineractLoanId": "8237",
+  "state": "APPLIED"
+}
+```
+
+### Get loan
+
+```http
+GET /api/v1/lms/loans/{loanId}
+Authorization: Bearer <token>
+```
+
+```json Response (Fineract proxy)
+{
+  "id": 8237,
+  "accountNo": "0000008237",
+  "status": { "id": 100, "value": "loanStatusType.active" },
+  "loanProductId": 101,
+  "loanProductName": "LOAN_BASIC",
+  "principal": 25000.0,
+  "currency": { "code": "TZS" }
+}
+```
+
+### Approve loan
+
+```http
+POST /api/v1/lms/loans/{loanId}/approve
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "approvedOnDate": "2025-01-01",
+  "note": "Approved by risk officer"
+}
+```
+
+```json Response
+{ "status": "approved", "loanId": "e5c8c7d2-..." }
+```
+
+### Disburse loan
+
+```http
+POST /api/v1/lms/loans/{loanId}/disburse
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "disbursedOnDate": "2025-01-02",
+  "amountMinor": 2500000
+}
+```
+
+```json Response
+{ "status": "disbursed", "loanId": "e5c8c7d2-..." }
+```
+
+### Repay loan
+
+```http
+POST /api/v1/lms/loans/{loanId}/repayments
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "amountMinor": 200000,
+  "currency": "TZS"
+}
+```
+
+```json Response
+{
+  "status": "repayment-accepted",
+  "loanId": "e5c8c7d2-...",
+  "amountMinor": 200000,
+  "currency": "TZS"
+}
+```
+
+## API reference
+
+<Cards>
+  <Card title="Swagger UI" icon="book" href="https://bridge-services.example.com/docs" />
+  <Card title="OpenAPI JSON" icon="file-code" href="https://bridge-services.example.com/docs/json" />
+</Cards>
+

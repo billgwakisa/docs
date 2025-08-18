@@ -1,0 +1,35 @@
+---
+title: "Payments & Transfers"
+description: "Merchant onboarding (TanQR), QR flows, rails routing, callbacks, and reconciliation."
+icon: "money-bill-transfer"
+---
+
+## What it is
+
+Payment orchestration across local rails: TIPS/TanQR, PSPs, and MNO wallets. Static and dynamic QR, routing, and settlement.
+
+## Capabilities
+
+- Merchant onboarding and static QR
+- Dynamic QR per transaction
+- Initiate transfers and track status
+- Webhooks and reconciliation exports
+
+## API reference
+
+```http
+POST /v1/payments/merchants
+GET  /v1/payments/merchants/{merchantId}/static-qr
+POST /v1/payments/merchants/{merchantId}/dynamic-qr
+GET  /v1/payments/qr/{qrId}/status
+POST /v1/payments/initiate
+GET  /v1/payments/{paymentId}
+POST /v1/payments/{paymentId}/webhook
+```
+
+## Auth & reliability
+
+- Auth: JWT Bearer; per‑route scopes (e.g., `payments:write`)
+- Idempotency: `Idempotency-Key` required for mutations
+- Webhooks: retry with exponential backoff; verify signature header
+
