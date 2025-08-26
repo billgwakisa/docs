@@ -1,5 +1,5 @@
 ---
-title: "WMS — Wallet APIs"
+title: "Wallet APIs"
 description: "Open wallets, list transactions, top-up and payout."
 icon: "wallet"
 ---
@@ -8,9 +8,9 @@ icon: "wallet"
 
 Wallet APIs for account creation, balance/transactions, and funding/withdrawals.
 
-<Info>
-Auth: JWT Bearer verified via Management JWKS. Typical scopes: `wms:read`, `wms:write`.
-</Info>
+<Note>
+Auth: JTW token is valid for 1 hour from the time of issuance. After it expires, you must generate a new token.
+</Note>
 
 ## Get a token
 
@@ -42,20 +42,14 @@ Use the token in the `Authorization` header for all subsequent requests:
 Authorization: Bearer <token>
 ```
 
-## Endpoints
+## Walett Management
 
-```http
-POST /v1/wallets
-GET  /v1/wallets/{walletId}
-GET  /v1/wallets/{walletId}/transactions
-POST /v1/wallets/{walletId}/topup
-POST /v1/wallets/{walletId}/payout
-```
+
 
 ### Open wallet
 
 ```http
-POST /api/v1/wallets
+POST /api/v1/wms/wallets
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -81,7 +75,7 @@ Content-Type: application/json
 ### Get wallet
 
 ```http
-GET /api/v1/wallets/{walletId}
+GET /api/v1/wms/wallets/{walletId}
 Authorization: Bearer <token>
 ```
 
@@ -101,7 +95,7 @@ Authorization: Bearer <token>
 ### List transactions
 
 ```http
-GET /api/v1/wallets/{walletId}/transactions
+GET /api/v1/wms/wallets/{walletId}/transactions
 Authorization: Bearer <token>
 ```
 
@@ -125,7 +119,7 @@ Authorization: Bearer <token>
 ### Top up
 
 ```http
-POST /api/v1/wallets/{walletId}/topup
+POST /api/v1/wms/wallets/{walletId}/topup
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -143,9 +137,76 @@ Content-Type: application/json
 ```
 
 ### Payout
+### Transfer between wallets
 
 ```http
-POST /api/v1/wallets/{walletId}/payout
+POST /api/v1/wms/wallets/transfer
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "fromWalletId": "a1b2c3d4-...",
+  "toWalletId": "b2c3d4e5-...",
+  "amountMinor": 250000,
+  "currency": "TZS"
+}
+```
+
+```json Response
+{
+  "status": "accepted",
+  "transferId": "tr_01H..."
+}
+```
+
+### Wallet statement
+
+```http
+GET /api/v1/wms/wallets/{walletId}/statement
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "walletId": "a1b2c3d4-...",
+  "period": { "fromDate": "2025-01-01", "toDate": "2025-01-31" },
+  "openingBalanceMinor": 0,
+  "closingBalanceMinor": 500000,
+  "transactions": [
+    { "date": "2025-01-05", "type": "topup", "amountMinor": 500000, "currency": "TZS" }
+  ]
+}
+```
+
+### Freeze wallet
+
+```http
+POST /api/v1/wms/wallets/{walletId}:freeze
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "reason": "suspected fraud"
+}
+```
+
+```json Response
+{ "status": "frozen", "walletId": "a1b2c3d4-..." }
+```
+
+### Unfreeze wallet
+
+```http
+POST /api/v1/wms/wallets/{walletId}:unfreeze
+Authorization: Bearer <token>
+```
+
+```json Response
+{ "status": "active", "walletId": "a1b2c3d4-..." }
+```
+
+```http
+POST /api/v1/wms/wallets/{walletId}/payout
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -171,23 +232,94 @@ Content-Type: application/json
 
 ## Reports
 
-<Warning>
-Planned. Wallet summaries and transaction exports for reconciliation.
-</Warning>
+All reports support `fromDate`, `toDate`, optional `format=json|csv|pdf`.
+
+### Portfolio summary
 
 ```http
-GET /api/v1/wallets/reports/summary?from=2025-01-01&to=2025-01-31
-GET /api/v1/wallets/reports/journals?from=2025-01-01&to=2025-01-31
+GET /api/v1/wms/reports/portfolio-summary?fromDate=2025-01-01&toDate=2025-01-31
+Authorization: Bearer <token>
 ```
 
-## Accounting
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "totals": { "numWallets": 42000, "balanceMinor": 98765432100 },
+  "byProduct": [
+    { "productCode": "SAVINGS_BASIC", "numWallets": 30000, "balanceMinor": 70000000000 }
+  ]
+}
+```
 
-<Warning>
-Planned. Trust/float account positions and GL export endpoints.
-</Warning>
+### Transaction activity & volume
 
 ```http
-GET /api/v1/wallets/accounting/positions?asOf=2025-01-31
-GET /api/v1/wallets/accounting/exports?from=2025-01-01&to=2025-01-31
+GET /api/v1/wms/reports/transaction-activity?fromDate=2025-01-01&toDate=2025-01-31&transactionType=topup&frequency=daily
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "series": [
+    { "date": "2025-01-01", "count": 1200, "amountMinor": 500000000 },
+    { "date": "2025-01-02", "count": 1500, "amountMinor": 600000000 }
+  ]
+}
+```
+
+### Liquidity & float
+
+```http
+GET /api/v1/wms/reports/liquidity?fromDate=2025-01-01&toDate=2025-01-31&floatType=custodian&frequency=daily
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "floatType": "custodian",
+  "series": [
+    { "date": "2025-01-01", "balanceMinor": 20000000000 },
+    { "date": "2025-01-02", "balanceMinor": 20500000000 }
+  ]
+}
+```
+
+### Reconciliation
+
+```http
+GET /api/v1/wms/reports/reconciliation?fromDate=2025-01-01&toDate=2025-01-31&status=pending&fspId=fspi_bank
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "status": "pending",
+  "items": [
+    { "reference": "ext_123", "amountMinor": 1000000, "currency": "TZS", "accountType": "custodian" }
+  ]
+}
+```
+
+## Finance
+
+### Float/custodian positions
+
+```http
+GET /api/v1/wms/reports/liquidity?fromDate=2025-01-01&toDate=2025-01-31&floatType=fsp
+Authorization: Bearer <token>
+```
+
+### Journal exports
+
+```http
+GET /api/v1/wms/reports/reconciliation?fromDate=2025-01-01&toDate=2025-01-31&status=reconciled&format=csv
+Authorization: Bearer <token>
 ```
 

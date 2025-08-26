@@ -30,7 +30,8 @@
             "pages": [
               "services/embedded-finance",
               "services/embedded-finance/lms",
-              "services/embedded-finance/wms"
+              "services/embedded-finance/wms",
+              "services/embedded-finance/kyc"
             ]
           }
         ]

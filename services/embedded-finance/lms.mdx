@@ -1,5 +1,5 @@
 ---
-title: "LMS — Lending APIs"
+title: "Lending APIs"
 description: "Apply, approve, disburse, schedule, and manage loans."
 icon: "hand-holding-dollar"
 ---
@@ -8,9 +8,19 @@ icon: "hand-holding-dollar"
 
 Loan lifecycle APIs: create applications, approve, disburse to a wallet, fetch schedules and status.
 
-<Info>
-Auth: JWT Bearer verified via Management JWKS. Typical scopes: `lms:read`, `lms:write`.
-</Info>
+<Note>
+Auth: JTW token is valid for 1 hour from the time of issuance. After it expires, you must generate a new token.
+</Note>
+
+<Cards>
+  <Card title="Get a token" href="#get-a-token" icon="key" />
+  <Card title="Products" href="#product-management" icon="list" />
+  <Card title="Loans" href="#loans" icon="hand-holding-dollar" />
+  <Card title="Transactions" href="#transactions" icon="money-bill-transfer" />
+  <Card title="Schedules" href="#repayment-schedules" icon="calendar" />
+  <Card title="Reports" href="#reports" icon="chart-line" />
+  <Card title="Finance" href="#finance" icon="file-invoice-dollar" />
+</Cards>
 
 ## Get a token
 
@@ -42,20 +52,12 @@ Use the token in the `Authorization` header for all subsequent requests:
 Authorization: Bearer <token>
 ```
 
-## Endpoints
 
-```http
-POST /v1/lms/loans
-POST /v1/lms/loans/{id}/approve
-POST /v1/lms/loans/{id}/disburse
-GET  /v1/lms/loans/{id}
-GET  /v1/lms/loans         # list
-POST /v1/lms/loans/{id}/repayments
-```
 
 ## Product management
 
 Manage loan products used when creating loans.
+### Create Lending Product
 
 ```http
 POST /api/v1/lms/lending/products
@@ -86,100 +88,89 @@ Content-Type: application/json
 }
 ```
 
+### Get Available Lending Products
 ```http
 GET /api/v1/lms/lending/products
 Authorization: Bearer <token>
 ```
 
+```json Response
+[
+  {
+    "productCode": "LOAN_BASIC",
+    "type": "loan",
+    "name": "Basic Loan",
+    "currency": "TZS",
+    "config": { "minPrincipal": 100000, "maxPrincipal": 10000000, "tenorMonths": 12 },
+    "accountingMapping": { "glAsset": "1101", "glIncome": "4101" },
+    "status": "draft",
+    "version": 1,
+    "createdAt": "2025-01-01T10:00:00.000Z",
+    "updatedAt": "2025-01-01T10:00:00.000Z"
+  },
+  {
+    "productCode": "LOAN_PLUS",
+    "type": "loan",
+    "name": "Plus Loan",
+    "currency": "TZS",
+    "config": { "minPrincipal": 500000, "maxPrincipal": 20000000, "tenorMonths": 24 },
+    "accountingMapping": null,
+    "status": "published",
+    "version": 3,
+    "createdAt": "2025-01-02T10:00:00.000Z",
+    "updatedAt": "2025-01-10T10:00:00.000Z"
+  }
+]
+```
+
+### Get Lending Product by Code
 ```http
 GET /api/v1/lms/lending/products/{code}
 Authorization: Bearer <token>
 ```
 
+```json Response
+{
+  "productCode": "LOAN_BASIC",
+  "type": "loan",
+  "name": "Basic Loan",
+  "currency": "TZS",
+  "config": { "minPrincipal": 100000, "maxPrincipal": 10000000, "tenorMonths": 12 },
+  "accountingMapping": { "glAsset": "1101", "glIncome": "4101" },
+  "status": "draft",
+  "version": 1,
+  "createdAt": "2025-01-01T10:00:00.000Z",
+  "updatedAt": "2025-01-01T10:00:00.000Z"
+}
+```
+
+### Publish Lending Product
 ```http
 POST /api/v1/lms/lending/products/{code}/publish
 Authorization: Bearer <token>
 ```
 
-<Note>
-Publishing marks a product as available and increments its version. Creating the actual product in the FSP (e.g., Fineract) may be automated in future.
-</Note>
-
-## Transactions
-
-### Repay loan
-
-```http
-POST /api/v1/lms/loans/{loanId}/repayments
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "amountMinor": 200000,
-  "currency": "TZS"
-}
-```
-
 ```json Response
 {
-  "status": "repayment-accepted",
-  "loanId": "e5c8c7d2-...",
-  "amountMinor": 200000,
-  "currency": "TZS"
-}
-```
-
-### List loans
-
-```http
-GET /api/v1/lms/loans?status=active&productCode=LOAN_BASIC&customerId=...
-Authorization: Bearer <token>
-```
-
-## Repayment schedules
-
-<Warning>
-Planned. Endpoint will return an amortization schedule and next due installment. Proposed:
-</Warning>
-
-```http
-GET /api/v1/lms/loans/{loanId}/schedule
-Authorization: Bearer <token>
-```
-
-```json Planned Response
-{
-  "loanId": "e5c8c7d2-...",
+  "productCode": "LOAN_BASIC",
+  "type": "loan",
+  "name": "Basic Loan",
   "currency": "TZS",
-  "installments": [
-    { "number": 1, "dueDate": "2025-02-01", "principalMinor": 150000, "interestMinor": 50000, "totalMinor": 200000, "paid": false },
-    { "number": 2, "dueDate": "2025-03-01", "principalMinor": 150000, "interestMinor": 40000, "totalMinor": 190000, "paid": false }
-  ],
-  "nextDue": { "number": 1, "dueDate": "2025-02-01", "totalMinor": 200000 }
+  "config": { "minPrincipal": 100000, "maxPrincipal": 10000000, "tenorMonths": 12 },
+  "accountingMapping": { "glAsset": "1101", "glIncome": "4101" },
+  "status": "published",
+  "version": 2,
+  "createdAt": "2025-01-01T10:00:00.000Z",
+  "updatedAt": "2025-01-01T12:00:00.000Z"
 }
 ```
 
-## Reports
+<Note>
+Ensure that you publish products before making them available to your users
+</Note>
 
-<Warning>
-Planned. Journal and portfolio reports per business and product. Examples:
-</Warning>
-
-```http
-GET /api/v1/lms/reports/journals?from=2025-01-01&to=2025-01-31
-GET /api/v1/lms/reports/portfolio?asOf=2025-01-31
-```
-
-## Accounting
-
-Operator/internal endpoint for GL accounts sourced from the FSP.
-
-```http
-GET /api/v1/lms/internal/lms/glaccounts
-Authorization: Bearer <token>
-```
-
-### Create loan
+## Loans
+### Create Loan Account
 
 ```http
 POST /api/v1/lms/loans
@@ -198,19 +189,18 @@ Content-Type: application/json
 ```json Response
 {
   "loanId": "e5c8c7d2-0000-0000-0000-000000000000",
-  "fineractLoanId": "8237",
   "state": "APPLIED"
 }
 ```
 
-### Get loan
+### Get Loan Account
 
 ```http
 GET /api/v1/lms/loans/{loanId}
 Authorization: Bearer <token>
 ```
 
-```json Response (Fineract proxy)
+```json Response
 {
   "id": 8237,
   "accountNo": "0000008237",
@@ -231,13 +221,43 @@ Content-Type: application/json
 
 {
   "approvedOnDate": "2025-01-01",
-  "note": "Approved by risk officer"
+  "note": "Auto-approved by system"
 }
 ```
 
 ```json Response
 { "status": "approved", "loanId": "e5c8c7d2-..." }
 ```
+
+### List loans
+
+```http
+GET /api/v1/lms/loans?status=active&productCode=LOAN_BASIC&customerId=...
+Authorization: Bearer <token>
+```
+
+## Repayment schedules
+
+```http
+GET /api/v1/lms/loans/{loanId}/schedule
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "loanId": "e5c8c7d2-...",
+  "currency": "TZS",
+  "installments": [
+    { "number": 1, "dueDate": "2025-02-01", "principalMinor": 150000, "interestMinor": 50000, "totalMinor": 200000, "paid": false },
+    { "number": 2, "dueDate": "2025-03-01", "principalMinor": 150000, "interestMinor": 40000, "totalMinor": 190000, "paid": false }
+  ],
+  "nextDue": { "number": 1, "dueDate": "2025-02-01", "totalMinor": 200000 }
+}
+```
+
+
+
+## Transactions
 
 ### Disburse loan
 
@@ -278,10 +298,206 @@ Content-Type: application/json
 }
 ```
 
-## API reference
 
-<Cards>
-  <Card title="Swagger UI" icon="book" href="https://bridge-services.example.com/docs" />
-  <Card title="OpenAPI JSON" icon="file-code" href="https://bridge-services.example.com/docs/json" />
-</Cards>
+## Reports
+
+Only essential, high-signal reports are shown below. All support `fromDate`, `toDate`, and optional `format=json|csv|pdf`.
+
+### Portfolio summary
+
+```http
+GET /api/v1/lms/reports/portfolio-summary?fromDate=2025-01-01&toDate=2025-01-31&frequency=monthly
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "totals": {
+    "numLoans": 1200,
+    "principalOutstandingMinor": 12345678900,
+    "arrearsMinor": 234567800,
+    "par30": 0.045
+  },
+  "breakdown": [
+    { "key": "LOAN_BASIC", "numLoans": 800, "principalOutstandingMinor": 8234567800 },
+    { "key": "LOAN_PLUS", "numLoans": 400, "principalOutstandingMinor": 4100001100 }
+  ]
+}
+```
+
+### Collections
+
+```http
+GET /api/v1/lms/reports/collections?fromDate=2025-01-01&toDate=2025-01-31&reportType=actual
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "rows": [
+    { "date": "2025-01-01", "scheduledMinor": 50000000, "collectedMinor": 48000000, "shortfallMinor": 2000000 },
+    { "date": "2025-01-02", "scheduledMinor": 51000000, "collectedMinor": 50500000, "shortfallMinor": 500000 }
+  ]
+}
+```
+
+### Delinquency
+
+```http
+GET /api/v1/lms/reports/delinquency?fromDate=2025-01-01&toDate=2025-01-31&bucket=31-60
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "asOf": "2025-01-31",
+  "bucket": "31-60",
+  "counts": { "numLoans": 120, "uniqueCustomers": 110 },
+  "exposureMinor": 345678900,
+  "byProduct": [
+    { "productCode": "LOAN_BASIC", "numLoans": 80, "exposureMinor": 245678900 },
+    { "productCode": "LOAN_PLUS", "numLoans": 40, "exposureMinor": 100000000 }
+  ]
+}
+```
+
+### Revenue
+
+```http
+GET /api/v1/lms/reports/revenue?fromDate=2025-01-01&toDate=2025-01-31&revenueType=total
+Authorization: Bearer <token>
+```
+
+### NPL (Non‑Performing Loans)
+
+```http
+GET /api/v1/lms/reports/npl?fromDate=2025-01-01&toDate=2025-01-31&daysOverdue=90&productCode=LOAN_BASIC
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "daysOverdue": 90,
+  "totals": { "numLoans": 42, "exposureMinor": 987654321 },
+  "byProduct": [
+    { "productCode": "LOAN_BASIC", "numLoans": 30, "exposureMinor": 700000000 },
+    { "productCode": "LOAN_PLUS", "numLoans": 12, "exposureMinor": 287654321 }
+  ]
+}
+```
+
+### Portfolio performance
+
+```http
+GET /api/v1/lms/reports/portfolio/performance?fromDate=2025-01-01&toDate=2025-01-31&groupBy=product
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "metrics": [
+    {
+      "key": "LOAN_BASIC",
+      "newLoans": 300,
+      "disbursedMinor": 7500000000,
+      "repaymentsMinor": 1200000000,
+      "writeOffMinor": 50000000,
+      "par30": 0.038
+    },
+    {
+      "key": "LOAN_PLUS",
+      "newLoans": 120,
+      "disbursedMinor": 3600000000,
+      "repaymentsMinor": 600000000,
+      "writeOffMinor": 20000000,
+      "par30": 0.052
+    }
+  ]
+}
+```
+
+### Disbursements
+
+```http
+GET /api/v1/lms/reports/disbursements?fromDate=2025-01-01&toDate=2025-01-31
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "rows": [
+    {
+      "date": "2025-01-02",
+      "loanId": "e5c8c7d2-...",
+      "customerId": "aaaaaaaa-bbbb-...",
+      "productCode": "LOAN_BASIC",
+      "amountMinor": 2500000,
+      "currency": "TZS"
+    }
+  ],
+  "totals": { "count": 420, "amountMinor": 11100000000 }
+}
+```
+
+```json Response
+{
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "totals": { "feesMinor": 1234500, "interestMinor": 5432100, "totalMinor": 6666600 },
+  "byProduct": [
+    { "productCode": "LOAN_BASIC", "feesMinor": 600000, "interestMinor": 3000000, "totalMinor": 3600000 },
+    { "productCode": "LOAN_PLUS", "feesMinor": 634500, "interestMinor": 2432100, "totalMinor": 3066600 }
+  ]
+}
+```
+
+## Finance
+
+### General ledger
+
+```http
+GET /api/v1/lms/reports/ledger?fromDate=2025-01-01&toDate=2025-01-31&glAccountId=1101
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "glAccountId": "1101",
+  "fromDate": "2025-01-01",
+  "toDate": "2025-01-31",
+  "entries": [
+    { "date": "2025-01-05", "description": "Loan disbursement", "debitMinor": 250000000, "creditMinor": 0, "balanceMinor": 250000000 },
+    { "date": "2025-01-10", "description": "Repayment", "debitMinor": 0, "creditMinor": 2000000, "balanceMinor": 248000000 }
+  ]
+}
+```
+
+### Trial balance
+
+```http
+GET /api/v1/lms/reports/trial-balance?fromDate=2025-01-01&toDate=2025-01-31
+Authorization: Bearer <token>
+```
+
+```json Response
+{
+  "asOf": "2025-01-31",
+  "accounts": [
+    { "glAccountId": "1101", "name": "Loans outstanding", "debitMinor": 250000000, "creditMinor": 0, "balanceMinor": 250000000 },
+    { "glAccountId": "4101", "name": "Interest income", "debitMinor": 0, "creditMinor": 5432100, "balanceMinor": -5432100 }
+  ]
+}
+```
+
+
 

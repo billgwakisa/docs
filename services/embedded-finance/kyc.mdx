@@ -1,0 +1,272 @@
+---
+title: "KYC & Customer Onboarding"
+description: "Create and manage customers, submit KYC documents, and manage lifecycle."
+icon: "id-card"
+---
+
+## Overview
+
+KYC is the authoritative store for customer identity.
+
+<Cards>
+  <Card title="Get a token" href="#get-a-token" icon="key" />
+  <Card title="Customers" href="#customers" icon="user" />
+  <Card title="KYC" href="#kyc" icon="passport" />
+  <Card title="Lifecycle" href="#lifecycle" icon="toggle-on" />
+  <Card title="Verification" href="#verification" icon="shield-check" />
+  <Card title="Search" href="#search" icon="magnifying-glass" />
+</Cards>
+
+## Get a token
+
+```http
+POST /api/generate-token
+Content-Type: application/json
+
+{ "keyId": "00000000-0000-4000-8000-000000000000", "secret": "<your-api-secret>" }
+```
+
+Use it in requests:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Customers
+
+### Upsert customer
+
+```http
+POST /api/v1/kyc/customers
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "legalName": "Jane Doe",
+  "type": "PERSON",
+  "mobile": "+255700000000",
+  "email": "jane@example.com",
+  "dob": "1995-01-10",
+  "nationalId": "NID12345",
+  "address": { "line1": "Street 1", "city": "Dar" }
+}
+```
+
+```json Response
+{
+  "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "legalName": "Jane Doe",
+  "type": "PERSON"
+}
+```
+
+#### Possible payloads
+
+```json PERSON
+{
+  "legalName": "Jane Doe",
+  "type": "PERSON",
+  "mobile": "+255700000000",
+  "email": "jane@example.com",
+  "dob": "1995-01-10",
+  "nationalId": "NID12345",
+  "address": { "line1": "Street 1", "city": "Dar", "country": "TZ" }
+}
+```
+
+```json BUSINESS
+{
+  "legalName": "ACME LTD",
+  "type": "BUSINESS",
+  "mobile": "+255711111111",
+  "email": "ops@acme.tz",
+  "address": { "line1": "Plot 10", "city": "Dar", "country": "TZ" }
+}
+```
+
+#### Field rules
+
+- **type**: `PERSON` or `BUSINESS`
+- **dob**: `yyyy-MM-dd` when provided
+- **email**, **mobile**, **nationalId**, **address**: optional
+
+### Get customer
+
+```http
+GET /api/v1/kyc/customers/{customerId}
+Authorization: Bearer <token>
+```
+
+## KYC
+
+### Submit KYC
+
+```http
+POST /api/v1/kyc/customers/{customerId}/kyc
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "documents": [
+    { "type": "id_front", "url": "https://files.example.com/123/front.jpg" },
+    { "type": "id_back", "url": "https://files.example.com/123/back.jpg" }
+  ],
+  "identifiers": [
+    { "type": "nid", "value": "NID12345" }
+  ],
+  "metadata": { "issuedBy": "NIDA" }
+}
+```
+
+```json Response
+{ "status": "received" }
+```
+
+#### Field rules
+
+- **documents**: required array of `{ type, url }`
+- **identifiers**: optional array of `{ type, value }` (e.g., `nid`, `passport`)
+- **metadata**: optional object for provider-specific notes
+
+### Add identifiers
+
+```http
+POST /api/v1/kyc/customers/{customerId}/identifiers
+Authorization: Bearer <token>
+Content-Type: application/json
+
+[
+  { "type": "passport", "value": "AB1234567" }
+]
+```
+
+### Add documents
+
+```http
+POST /api/v1/kyc/customers/{customerId}/documents
+Authorization: Bearer <token>
+Content-Type: application/json
+
+[
+  { "type": "address_proof", "url": "https://files.example.com/poa.pdf" }
+]
+```
+
+## Lifecycle
+
+### Activate customer
+
+```http
+POST /api/v1/kyc/customers/{customerId}/activate
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "activatedOn": "2025-01-01" }
+```
+
+### Deactivate customer
+
+```http
+POST /api/v1/kyc/customers/{customerId}/deactivate
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "deactivatedOn": "2025-02-01" }
+```
+
+#### Field rules
+
+- **activatedOn** / **deactivatedOn**: `yyyy-MM-dd`
+
+## Search
+
+```http
+GET /api/v1/kyc/customers/search?query=jane
+Authorization: Bearer <token>
+```
+
+## Verification
+
+### Verify identity
+
+```http
+POST /api/v1/kyc/identity/verify
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "identityType": "DRIVING_LICENCE",
+  "identityNumber": "T1234567",
+  "countryCode": "TZ",
+  "issueDate": "2020-01-01",
+  "isConsent": "true"
+}
+```
+
+```json Response
+{
+  "matched": true,
+  "fullName": "Jane A Doe",
+  "dob": "1995-01-10",
+  "nationality": "TZ"
+}
+```
+
+#### Field rules
+
+- **identityType**: one of `DRIVING_LICENCE`, `TIN`, `VOTERS_CARD`, `ZANID`
+- **countryCode**: must be `TZ`
+- **issueDate**: `yyyy-MM-dd`; required for `TIN` and `DRIVING_LICENCE`
+- **isConsent**: must be string `"true"`
+
+### Verify mobile
+
+```http
+POST /api/v1/kyc/mobile/verify
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "phoneNumber": "+255700000000",
+  "firstName": "Jane",
+  "lastName": "Doe"
+}
+```
+
+```json Response
+{ "matched": true, "operator": "Vodacom" }
+```
+
+#### Field rules
+
+- **phoneNumber**: include country code (e.g., `+255700000000`)
+- **firstName**, **lastName**: required; **middleName** optional
+
+### Verify business
+
+```http
+POST /api/v1/kyc/business/verify
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "registrationNumber": "12345",
+  "countryCode": "TZ",
+  "isConsent": "true"
+}
+```
+
+#### Field rules
+
+- **countryCode**: must be `TZ`
+- **isConsent**: must be string `"true"`
+
+```json Response
+{
+  "matched": true,
+  "legalName": "ACME LTD",
+  "status": "ACTIVE"
+}
+```
+
+
