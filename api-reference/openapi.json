@@ -421,7 +421,7 @@
           "interestRatePerPeriod": { "type": "number" },
           "expectedDisbursementDate": { "type": "string", "description": "yyyy-MM-dd" },
           "linkWalletId": { "type": "string", "format": "uuid", "description": "Strategy B: attach an existing wallet." },
-          "createWalletProductCode": { "type": "string", "description": "Strategy C: auto-provision a wallet + auto-sweep standing instruction." },
+          "createWalletProductCode": { "type": "string", "description": "Strategy C: auto-provision a wallet + auto-sweep standing instruction. Temporarily unavailable — open a wallet and use linkWalletId instead." },
           "fspFundId": { "type": "integer" }
         }
       },
