@@ -1,46 +1,50 @@
 ---
-title: "x-bridge MCP server"
-description: "Give your AI agent the x-bridge API — safely. Read tools by default, money-movers only when you unlock them."
+title: "Build with your AI agent (MCP)"
+description: "Point your coding assistant at the x-bridge MCP and it writes x-bridge into your app — token client, the use-case flow, the rules — without you reading the whole API."
 icon: "robot"
 ---
 
-The x-bridge MCP server lets an AI agent (Claude Code, Cursor, any MCP client) call x-bridge directly. Tools are generated from the [API reference](/api-reference/openapi/post-generate-token), so they always match the docs.
+The x-bridge MCP server turns your coding assistant (Claude Code, Cursor, any MCP client) into an x-bridge integration expert. It scaffolds x-bridge **into your codebase** — a token client, the flow for your use case, and the gotchas baked in — so you ship the integration in minutes.
 
 <Note>
-Prototype, shipped in the docs repo under `mcp/`. It will graduate to `npx @x-bridge/mcp`.
+By default it runs in **integrate mode**: it writes integration code into your project and never calls live x-bridge APIs on its own. (An optional execute mode lets the agent run sandbox calls — see the end.)
 </Note>
 
-## Safety: you decide at launch, not the agent
+## What it does for you
 
 <Columns cols={2}>
-  <Card title="Environment is fixed by the key" icon="lock">
-    You start the server with a sandbox or production key. The agent cannot switch environments at call time.
+  <Card title="Scaffolds a token client" icon="key">
+    A production-ready client (generate-token + 1h cache + 401 retry) dropped into your project, in your language.
   </Card>
-  <Card title="Money-movers are locked by default" icon="shield-halved">
-    Disburse, repayments, deposits, escrow capture, and collection triggers are only available when you launch with `BRIDGE_ENABLE_MONEY_MOVERS=true`.
+  <Card title="Writes the use-case flow" icon="list-check">
+    KYC, wallets, lending, BNPL, or collections — the verified end-to-end flow, translated into your code.
+  </Card>
+  <Card title="Knows the rules" icon="shield-check">
+    Published-products-only, activate-the-customer-first, link-don't-auto-provision — encoded, so the agent doesn't trip the common failures.
+  </Card>
+  <Card title="Stays in sync" icon="arrows-rotate">
+    Tools and references are generated from this same API spec, so the guidance never drifts from the docs.
   </Card>
 </Columns>
 
-By default the agent gets read/lookup tools and safe writes (create customer, open wallet). It cannot move real funds unless you explicitly unlock that when starting the server.
-
 ## Install
 
-```bash
-cd mcp
-npm install
-npm run build
-```
-
-## Claude Code
+<Warning>
+Prototype — `@x-bridge/mcp` is not published to npm yet. For now, install from the repo. The `npx` one-liner below is the planned path.
+</Warning>
 
 ```bash
-BRIDGE_BAAS_KEY_ID=your-key-id \
-BRIDGE_BAAS_SECRET=your-secret \
-BRIDGE_ENVIRONMENT=sandbox \
-claude mcp add x-bridge -- node /absolute/path/to/docs/mcp/dist/index.js
+# Planned (once published):
+claude mcp add x-bridge -- npx -y @x-bridge/mcp
+
+# Today (from the repo):
+cd mcp && npm install && npm run build
+BRIDGE_MODE=integrate claude mcp add x-bridge -- node /absolute/path/to/docs/mcp/dist/index.js
 ```
 
-## Cursor (`~/.cursor/mcp.json`)
+Integrate mode needs **no credentials** — it only writes code, it doesn't call the API.
+
+### Cursor (`~/.cursor/mcp.json`)
 
 ```json
 {
@@ -48,22 +52,34 @@ claude mcp add x-bridge -- node /absolute/path/to/docs/mcp/dist/index.js
     "x-bridge": {
       "command": "node",
       "args": ["/absolute/path/to/docs/mcp/dist/index.js"],
-      "env": {
-        "BRIDGE_BAAS_KEY_ID": "your-key-id",
-        "BRIDGE_BAAS_SECRET": "your-secret",
-        "BRIDGE_ENVIRONMENT": "sandbox"
-      }
+      "env": { "BRIDGE_MODE": "integrate" }
     }
   }
 }
 ```
 
-Add `"BRIDGE_ENABLE_MONEY_MOVERS": "true"` (sandbox only, to start) to let the agent run full flows. Add `BRIDGE_GATEWAY_KEY_ID`/`BRIDGE_GATEWAY_SECRET` to enable [collection](/recipes/collections) tools.
+## Use it
 
-## Try it
+In your editor, run the **`integrate`** prompt, or just ask:
 
-Once connected, ask your agent: *"List the loan products, then onboard a customer named Jane Doe."* With money-movers unlocked in sandbox: *"Originate a 100,000 TZS loan for Jane with a linked wallet and disburse it."*
+> *"Add x-bridge BNPL to this app."*  ·  *"Wire up x-bridge wallets in TypeScript."*
 
-<Warning>
-Point it at a **sandbox** key first. Only unlock money-movers against production once you trust the flow.
-</Warning>
+The agent will:
+1. Read the integration rules (`integration_guide`).
+2. Drop in a token client (`client`) matching your project's conventions.
+3. Translate the use-case flow into your code (`recipe`), wiring in your own data.
+4. Show you where to set `XBRIDGE_KEY_ID` / `XBRIDGE_SECRET` and how to test against a sandbox key.
+
+It exposes these to your agent:
+- **Tools:** `integration_guide`, `recipe({useCase})`, `client({language})`
+- **Resources:** `xbridge://rules`, `xbridge://openapi`, `xbridge://recipe/*`, `xbridge://client/*`
+- **Prompt:** `integrate`
+
+## Optional: let the agent run calls (execute mode)
+
+For testing in a sandbox, set `BRIDGE_MODE=both` (or `execute`) and provide a key. The agent can then call the live API too. Safety is set by **you at launch**: the environment is fixed by the key (the agent can't switch it), and money-moving tools (disburse, deposit, escrow, collections) only register when you set `BRIDGE_ENABLE_MONEY_MOVERS=true`. Default keeps them off.
+
+```bash
+BRIDGE_MODE=both BRIDGE_BAAS_KEY_ID=... BRIDGE_BAAS_SECRET=... \
+claude mcp add x-bridge -- node /absolute/path/to/docs/mcp/dist/index.js
+```

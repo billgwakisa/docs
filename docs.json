@@ -32,6 +32,12 @@
               "concepts/conventions",
               "concepts/errors"
             ]
+          },
+          {
+            "group": "Build with AI",
+            "pages": [
+              "mcp"
+            ]
           }
         ]
       },
