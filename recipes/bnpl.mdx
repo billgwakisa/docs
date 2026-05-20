@@ -6,7 +6,7 @@ icon: "cart-shopping"
 
 Buy Now, Pay Later in one flow: hold the customer's down-payment in escrow, open a wallet and link a loan to it, disburse into that wallet, then capture the down-payment. This is the production-verified path.
 
-<Note>Requires an active customer ([KYC](/recipes/kyc-onboarding)). Bearer token from [`/generate-token`](/authentication); re-token on `401`. Amounts on loans are **major units** — see [Conventions](/concepts/conventions).</Note>
+<Note>Requires an active customer ([KYC](/recipes/kyc-onboarding)). Bearer token from [`/generate-token`](/authentication); re-token on `401`.</Note>
 
 ## Flow
 
@@ -58,7 +58,7 @@ LOAN=$(curl -s -X POST $BRIDGE_URL/v1/lms/loans \
 LOAN_ID=$(echo $LOAN | jq -r .loanId)
 ```
 
-<Warning>`principal` is in **major units** (`100000` = 100,000 TZS). Use a published loan product code from `GET /v1/lms/products`. See [Conventions](/concepts/conventions).</Warning>
+<Note>Use a published loan product code from `GET /v1/lms/products`.</Note>
 </Step>
 
 <Step title="Approve and disburse into the wallet">
@@ -86,13 +86,36 @@ If the order falls through instead, `POST /v1/wms/transactions/$TX_ID/release`.
 </Step>
 </Steps>
 
-## Repayments
+## Manage repayments
 
-Keep the wallet funded (via [Collections](/recipes/collections)) and record repayments against the loan with [`submit-payment`](/recipes/lending#record-repayments).
+Servicing a BNPL loan is identical to the [Lending recipe](/recipes/lending#record-repayments) — the loan is the system of record whether or not a wallet is linked. Two ways to settle each installment:
 
-<Note>
-A one-call shortcut (`createWalletProductCode` on `POST /v1/lms/loans`) is intended to auto-provision the wallet and a standing instruction in a single request. It's temporarily unavailable pending a platform fix — use the open-then-`linkWalletId` flow above, which is verified end to end.
-</Note>
+<Steps>
+<Step title="Collect from the customer">
+Trigger a mobile collection and wait for `COMPLETED` — see [Payment collections](/recipes/collections). You get back a `gatewayReference` (your `transactionId`).
+</Step>
+<Step title="Record the repayment (verified)">
+Post the collected payment against the loan. Bridge re-verifies it on the gateway before touching the ledger; idempotent on `gatewayReference`.
+
+```bash
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/submit-payment \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "gatewayReference": "ORDER_12345", "amount": 35000, "fspId": "CLICKPESA" }'
+```
+
+Already reconciled the payment yourself? Record it directly with [`/repayments`](/recipes/lending#record-repayments) using a `receiptNumber` as the idempotency key.
+</Step>
+<Step title="Track the schedule">
+```bash
+curl -s $BRIDGE_URL/v1/lms/loans/$LOAN_ID/schedule -H "Authorization: Bearer $TOKEN" | jq
+```
+Watch installments move from due to paid as repayments post.
+</Step>
+</Steps>
+
+### Auto-sweep (when available)
+
+Because the loan is linked to a wallet, the platform can attach a **standing instruction** that sweeps each due installment straight from the wallet — so you just keep the wallet funded (via [Collections](/recipes/collections)) and never call a repayment endpoint. This auto-sweep is provisioned by the one-call `createWalletProductCode` shortcut, which is temporarily unavailable pending a platform fix. Until then, settle installments explicitly with `submit-payment` as above — same result, one extra call.
 
 <Warning>
 Disbursed loans can't be cleanly un-disbursed. If a later step fails after disbursement, resolve forward (release the hold, contact Support) rather than rolling back the loan.

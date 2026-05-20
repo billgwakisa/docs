@@ -40,9 +40,7 @@ Your token expired (~1h TTL). Clear it, call `/generate-token` again, and retry 
 The customer isn't `ACTIVE`. Run the [KYC onboarding](/recipes/kyc-onboarding) flow: submit documents, then `PATCH .../activate`. Activation may require manual review.
 </Accordion>
 
-<Accordion title="Disbursed 100x too much (or too little)" icon="money-bill">
-A money-unit mistake. Loan `principal` and `transactionAmount` are **major units**; wallet balances are **minor units**. See [Conventions](/concepts/conventions).
-</Accordion>
+{/* TODO(api-team): money-unit error case hidden pending normalization. See tools/BACKEND-ISSUES.md */}
 
 <Accordion title="submit-payment returned 400" icon="receipt">
 Bridge verified the payment on the gateway and the amount didn't match (or the `gatewayReference` wasn't found yet). Confirm the collection completed and the `amount` matches before resubmitting.

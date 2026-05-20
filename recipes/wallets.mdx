@@ -40,7 +40,7 @@ curl -s -X POST $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/submit-deposit \
   -d '{ "gatewayReference": "MPESA-DEF456UVW", "amount": 50000, "fspId": "CLICKPESA", "description": "Top-up" }'
 ```
 
-<Warning>`amount` here is in **major units** (`50000` = 50,000 TZS). Wallet **balances** read back in minor units (`balanceMinor`). See [Conventions](/concepts/conventions).</Warning>
+{/* TODO(api-team): money-unit note hidden pending normalization. See tools/BACKEND-ISSUES.md */}
 
 Check the balance and history:
 

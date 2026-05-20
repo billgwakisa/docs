@@ -49,7 +49,7 @@ curl -s -X PATCH $BRIDGE_URL/v1/kyc/customers/$CUSTOMER_ID/activate \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d "{\"customerId\":\"$CUSTOMER_ID\",\"status\":\"ACTIVE\",\"activatedOn\":\"$(date +%F)\"}" >/dev/null
 
-# 2. Pick a published loan product (principal is in MAJOR units)
+# 2. Pick a published loan product
 PRODUCT=$(curl -s $BRIDGE_URL/v1/lms/products -H "Authorization: Bearer $TOKEN" \
   | jq -r '[.[] | select(.status=="published")][0].productCode')
 
@@ -72,9 +72,7 @@ You just onboarded a customer and disbursed a real loan — actual ledger entrie
 </Step>
 </Steps>
 
-<Warning>
-**`principal` is in major units** (`100000` = 100,000 TZS). Wallet amounts elsewhere use minor units. This mismatch is the most common money bug — see [Conventions](/concepts/conventions).
-</Warning>
+{/* TODO(api-team): money-unit note hidden pending normalization. See tools/BACKEND-ISSUES.md */}
 
 ## Next
 

@@ -105,7 +105,7 @@ const { tools, skipped } = buildTools();
 const byName = new Map(tools.map((t) => [t.name, t]));
 
 const server = new Server(
-  { name: "bridge-mcp", version: "0.1.0" },
+  { name: "x-bridge-mcp", version: "0.1.0" },
   { capabilities: { tools: {} } },
 );
 

@@ -1,11 +1,15 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Bridge Documentation",
+  "name": "x-bridge",
   "colors": {
-    "primary": "#15803d",
-    "light": "#07C983",
-    "dark": "#18181b"
+    "primary": "#7626E9",
+    "light": "#9D4AD6",
+    "dark": "#5B17B8"
+  },
+  "fonts": {
+    "heading": { "family": "Fraunces" },
+    "body": { "family": "Geist" }
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -66,7 +70,7 @@
         },
         {
           "anchor": "Support",
-          "href": "mailto:support@usereli.tech",
+          "href": "mailto:hello@xbridge.co.tz",
           "icon": "headset"
         }
       ]
@@ -80,7 +84,7 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:support@usereli.tech"
+        "href": "mailto:hello@xbridge.co.tz"
       }
     ],
     "primary": {
@@ -94,7 +98,7 @@
   },
   "footer": {
     "socials": {
-      "website": "https://usereli.tech"
+      "website": "https://www.xbridge.co.tz"
     }
   }
 }
