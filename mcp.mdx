@@ -30,19 +30,25 @@ By default it runs in **integrate mode**: it writes integration code into your p
 ## Install
 
 <Warning>
-Prototype — `@x-bridge/mcp` is not published to npm yet. For now, install from the repo. The `npx` one-liner below is the planned path.
+Prototype — not on npm yet. Install from the repo with the copy-paste block below. (`npx -y @x-bridge/mcp` is the planned one-liner once published.)
 </Warning>
 
-```bash
-# Planned (once published):
-claude mcp add x-bridge -- npx -y @x-bridge/mcp
+Clone somewhere permanent, then run the setup script — it builds the server and prints the exact command to register it:
 
-# Today (from the repo):
-cd mcp && npm install && npm run build
-BRIDGE_MODE=integrate claude mcp add x-bridge -- node /absolute/path/to/docs/mcp/dist/index.js
+```bash
+git clone --depth 1 https://github.com/billgwakisa/docs.git x-bridge
+cd x-bridge/mcp && ./setup.sh
 ```
 
-Integrate mode needs **no credentials** — it only writes code, it doesn't call the API.
+Prefer to do it by hand?
+
+```bash
+cd x-bridge/mcp && npm install && npm run build
+# Claude Code (run from x-bridge/mcp):
+claude mcp add x-bridge -e BRIDGE_MODE=integrate -- node "$PWD/dist/index.js"
+```
+
+Integrate mode needs **no credentials** — it only writes code, it never calls the API.
 
 ### Cursor (`~/.cursor/mcp.json`)
 
@@ -51,7 +57,7 @@ Integrate mode needs **no credentials** — it only writes code, it doesn't call
   "mcpServers": {
     "x-bridge": {
       "command": "node",
-      "args": ["/absolute/path/to/docs/mcp/dist/index.js"],
+      "args": ["/absolute/path/to/x-bridge/mcp/dist/index.js"],
       "env": { "BRIDGE_MODE": "integrate" }
     }
   }
@@ -60,11 +66,18 @@ Integrate mode needs **no credentials** — it only writes code, it doesn't call
 
 ## Use it
 
-In your editor, run the **`integrate`** prompt, or just ask:
+**Copy-paste this to your agent** (swap the use case for `KYC`, `wallets`, `lending`, `BNPL`, or `collections`):
 
-> *"Add x-bridge BNPL to this app."*  ·  *"Wire up x-bridge wallets in TypeScript."*
+```text
+Use the x-bridge MCP to add BNPL to my app. Read the integration rules and the
+recipe, then scaffold the token client and the flow into my codebase, matching my
+conventions. Wire in my own customer/order data, and show me where to set
+XBRIDGE_KEY_ID / XBRIDGE_SECRET. Don't call any live API.
+```
 
-The agent will:
+Or run the built-in **`integrate`** prompt — many clients surface MCP prompts as a slash command (e.g. `/integrate` or `/x-bridge:integrate`).
+
+Either way, the agent will:
 1. Read the integration rules (`integration_guide`).
 2. Drop in a token client (`client`) matching your project's conventions.
 3. Translate the use-case flow into your code (`recipe`), wiring in your own data.
