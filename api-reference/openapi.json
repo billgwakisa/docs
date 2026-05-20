@@ -1,216 +1,480 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
-    "version": "1.0.0"
+    "title": "Bridge API",
+    "version": "1.0.0",
+    "description": "Bridge is Banking-as-a-Service: launch wallets, lending, and payment collections while a bank/FSP retains custody and compliance. This reference covers the production-proven surface. Get a `keyId`/`secret` from the Dashboard, exchange them at `/generate-token` for a 1-hour Bearer token, then call the product APIs.\n\n**Money units:** WMS amounts are in `amountMinor` (integer cents). LMS loan `principal` and `transactionAmount` are in MAJOR units. Read each field's description before sending money.\n\n**Auth recovery:** tokens expire after ~1h. On a 401, re-call `/generate-token` and retry once."
   },
   "servers": [
     {
-      "url": "http://sandbox.mintlify.com"
+      "url": "https://{baasHost}/api",
+      "description": "BaaS core (KYC, Lending, Wallets)",
+      "variables": { "baasHost": { "default": "services.finance.reli.co.tz" } }
+    },
+    {
+      "url": "https://{gatewayHost}/api",
+      "description": "Collections gateway (payment collection). Confirm the gateway host; it may differ from the BaaS host.",
+      "variables": { "gatewayHost": { "default": "services.finance.reli.co.tz" } }
     }
   ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
+  "security": [{ "bearerAuth": [] }],
+  "tags": [
+    { "name": "Auth", "description": "Exchange API keys for a Bearer token." },
+    { "name": "KYC", "description": "Customers and identity. KYC is the authoritative customer store." },
+    { "name": "Lending", "description": "Loan products, origination, schedules, and repayments." },
+    { "name": "Wallets", "description": "Stored-value wallets, deposits, and escrow." },
+    { "name": "Collections", "description": "Mobile (USSD) payment collection. Separate service + key." }
   ],
   "paths": {
-    "/plants": {
-      "get": {
-        "description": "Returns all plants from the system that the user has access to",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "The maximum number of results to return",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Plant response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
+    "/generate-token": {
       "post": {
-        "description": "Creates a new plant in the store",
+        "tags": ["Auth"],
+        "summary": "Exchange keyId + secret for a Bearer token",
+        "description": "Returns a short-lived (~1h) JWT used as `Authorization: Bearer <token>` on all other calls. Each service (BaaS core and Collections gateway) issues its own token from its own key pair.",
+        "security": [],
         "requestBody": {
-          "description": "Plant to add to the store",
+          "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
+              "schema": { "$ref": "#/components/schemas/GenerateTokenRequest" },
+              "example": { "keyId": "00000000-0000-4000-8000-000000000000", "secret": "<your-api-secret>" }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
-            "description": "plant response",
+            "description": "Token issued",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Plant"
-                }
+                "schema": { "$ref": "#/components/schemas/TokenResponse" },
+                "example": { "token": "eyJhbGciOi...", "expiresAt": "2026-01-01T12:00:00.000Z", "businessId": "2c0219b4-8c70-418d-9e9a-449e7b7643eb", "environment": "sandbox", "scopes": ["wallet:*", "lending:*", "identity:*"] }
               }
             }
           },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/v1/kyc/customers": {
+      "post": {
+        "tags": ["KYC"],
+        "summary": "Upsert a customer",
+        "description": "Creates or updates a customer and syncs them to the core banking engine. Returns the `customerId` to use everywhere else.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpsertCustomerRequest" },
+              "example": { "legalName": "Jane Doe", "type": "PERSON", "mobile": "+255700000000", "email": "jane@example.com", "dob": "1995-01-10", "nationalId": "NID12345" }
             }
+          }
+        },
+        "responses": {
+          "200": { "description": "Customer upserted", "content": { "application/json": { "example": { "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "legalName": "Jane Doe", "type": "PERSON" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "get": {
+        "tags": ["KYC"],
+        "summary": "List customers",
+        "description": "Paginated list. Documented from the API surface; not exercised by the reference integration.",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["PENDING", "ACTIVE", "INACTIVE"] } },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["PERSON", "BUSINESS"] } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Customer list" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/v1/kyc/customers/{customerId}": {
+      "get": {
+        "tags": ["KYC"],
+        "summary": "Get customer by ID",
+        "parameters": [{ "$ref": "#/components/parameters/CustomerId" }],
+        "responses": {
+          "200": {
+            "description": "Customer",
+            "content": { "application/json": { "example": { "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "profile": { "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "legalName": "Jane Doe", "mobile": "+255700000000", "status": "ACTIVE" }, "externalData": { "id": 12, "firstname": "Jane", "lastname": "Doe", "active": true } } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/kyc/customers/phone/{mobile}": {
+      "get": {
+        "tags": ["KYC"],
+        "summary": "Get customer by phone",
+        "parameters": [{ "name": "mobile", "in": "path", "required": true, "schema": { "type": "string" }, "example": "+255700000000" }],
+        "responses": { "200": { "description": "Customer (same shape as get-by-id)" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/v1/kyc/customers/{customerId}/kyc": {
+      "post": {
+        "tags": ["KYC"],
+        "summary": "Submit KYC documents",
+        "parameters": [{ "$ref": "#/components/parameters/CustomerId" }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmitKycRequest" }, "example": { "documents": [{ "type": "NATIONAL_ID", "url": "https://storage.example.com/id-front.jpg" }], "identifiers": [{ "type": "nid", "value": "TZ-NIN-19900115-001" }] } } }
+        },
+        "responses": { "200": { "description": "KYC submitted" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/v1/kyc/customers/{customerId}/activate": {
+      "patch": {
+        "tags": ["KYC"],
+        "summary": "Activate a customer",
+        "description": "A customer must be ACTIVE before they can hold wallets or loans.",
+        "parameters": [{ "$ref": "#/components/parameters/CustomerId" }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "example": { "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "ACTIVE", "activatedOn": "2026-01-10" } } }
+        },
+        "responses": { "200": { "description": "Activated", "content": { "application/json": { "example": { "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "ACTIVE" } } } } }
+      }
+    },
+    "/v1/lms/products": {
+      "get": {
+        "tags": ["Lending"],
+        "summary": "List loan products",
+        "responses": {
+          "200": {
+            "description": "Published loan products",
+            "content": { "application/json": { "example": [{ "id": 1, "productCode": "PERSONAL_LOAN_001", "type": "loan", "name": "Standard Personal Loan", "currency": "TZS", "status": "published", "version": 1, "externalProductId": "12", "config": { "terms": { "principal": 500000, "minPrincipal": 100000, "maxPrincipal": 2000000, "numberOfRepayments": 6, "repaymentEvery": 1, "repaymentFrequency": "MONTHS" }, "interest": { "ratePerPeriod": 2.5, "rateFrequency": "MONTHLY" } } }] } }
           }
         }
       }
     },
-    "/plants/{id}": {
-      "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID of plant to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
+    "/v1/lms/products/{code}": {
+      "get": {
+        "tags": ["Lending"],
+        "summary": "Get loan product by code",
+        "description": "Documented from the API surface; not exercised by the reference integration.",
+        "parameters": [{ "name": "code", "in": "path", "required": true, "schema": { "type": "string" }, "example": "PERSONAL_LOAN_001" }],
+        "responses": { "200": { "description": "Loan product" }, "404": { "$ref": "#/components/responses/NotFound" } }
       }
-    }
-  },
-  "webhooks": {
-    "/plant/webhook": {
+    },
+    "/v1/lms/loans": {
       "post": {
-        "description": "Information about a new plant added to the store",
+        "tags": ["Lending"],
+        "summary": "Originate a loan",
+        "description": "Creates a loan application. Three wallet-linking strategies: (A) no wallet, (B) `linkWalletId` to attach an existing wallet, (C) `createWalletProductCode` to auto-provision a wallet and set up an auto-sweep standing instruction for repayments.\n\n**`principal` is in MAJOR units** (e.g. 100000 = 100,000 TZS), unlike WMS amounts which are minor units.",
         "requestBody": {
-          "description": "Plant added to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
-            }
-          }
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateLoanRequest" }, "example": { "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "productCode": "PERSONAL_LOAN_001", "principal": 100000, "numberOfRepayments": 3, "repaymentFrequency": "MONTHS", "expectedDisbursementDate": "2026-03-15", "createWalletProductCode": "CSAV", "fspFundId": 1 } } }
         },
         "responses": {
-          "200": {
-            "description": "Return a 200 status to indicate that the data was received successfully"
-          }
+          "201": { "description": "Loan created", "content": { "application/json": { "example": { "loanId": "5c9e2b3c-4d5e-6f7a-8b9c-1d2e3f4a5b6c", "externalLoanId": "45", "state": "PENDING", "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "productId": 1 } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
         }
+      }
+    },
+    "/v1/lms/loans/calculate-schedule": {
+      "post": {
+        "tags": ["Lending"],
+        "summary": "Preview a repayment schedule",
+        "description": "Calculates a schedule without creating a loan. Same body as Originate a loan.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateLoanRequest" } } } },
+        "responses": { "200": { "description": "Schedule preview", "content": { "application/json": { "example": { "currency": { "code": "TZS", "decimalPlaces": 2 }, "periods": [{ "period": 1, "dueDate": "2026-04-15", "principalDue": 33333.33, "interestDue": 2500.0, "totalDueForPeriod": 35833.33 }] } } } } }
+      }
+    },
+    "/v1/lms/loans/{loanId}": {
+      "get": {
+        "tags": ["Lending"],
+        "summary": "Get loan",
+        "description": "Documented from the API surface. Note: this response currently reflects core-engine fields (integer `id`, `status.value` like `loanStatusType.active`, `principal` in major units).",
+        "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
+        "responses": { "200": { "description": "Loan" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/v1/lms/loans/{loanId}/approve": {
+      "post": {
+        "tags": ["Lending"],
+        "summary": "Approve a loan",
+        "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "example": { "approvedOnDate": "2026-03-11", "note": "Credit check passed." } } } },
+        "responses": { "200": { "description": "Approved", "content": { "application/json": { "example": { "status": "approved", "loanId": "5c9e2b3c-4d5e-6f7a-8b9c-1d2e3f4a5b6c" } } } } }
+      }
+    },
+    "/v1/lms/loans/{loanId}/disburse": {
+      "post": {
+        "tags": ["Lending"],
+        "summary": "Disburse a loan",
+        "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "example": { "disbursedOnDate": "2026-03-12" } } } },
+        "responses": { "200": { "description": "Disbursed", "content": { "application/json": { "example": { "status": "disbursed", "loanId": "5c9e2b3c-4d5e-6f7a-8b9c-1d2e3f4a5b6c" } } } } }
+      }
+    },
+    "/v1/lms/loans/{loanId}/disburse-to-savings": {
+      "post": {
+        "tags": ["Lending"],
+        "summary": "Disburse a loan to its linked wallet",
+        "description": "Credits the linked wallet and syncs the local balance. Use for loans created with a linked/auto-provisioned wallet.",
+        "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "example": { "disbursedOnDate": "2026-03-12" } } } },
+        "responses": { "200": { "description": "Disbursed to wallet" } }
+      }
+    },
+    "/v1/lms/loans/{loanId}/schedule": {
+      "get": {
+        "tags": ["Lending"],
+        "summary": "Get active repayment schedule",
+        "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
+        "responses": { "200": { "description": "Repayment schedule" } }
+      }
+    },
+    "/v1/lms/loans/{loanId}/repayments": {
+      "post": {
+        "tags": ["Lending"],
+        "summary": "Record a repayment",
+        "description": "Records a repayment your gateway already collected. `transactionAmount` is in MAJOR units. `receiptNumber` acts as your idempotency key.",
+        "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RepaymentRequest" }, "example": { "transactionAmount": 35000, "transactionDate": "2026-04-10", "paymentTypeId": 1, "receiptNumber": "MPESA-ABC123XYZ", "note": "Mobile money repayment" } } } },
+        "responses": { "200": { "description": "Repayment recorded", "content": { "application/json": { "example": { "status": "repayment-accepted", "loanId": "5c9e2b3c-4d5e-6f7a-8b9c-1d2e3f4a5b6c", "amount": 35000 } } } } }
+      }
+    },
+    "/v1/lms/loans/{loanId}/submit-payment": {
+      "post": {
+        "tags": ["Lending"],
+        "summary": "Submit & verify an externally-collected repayment",
+        "description": "Bridge polls the payment gateway to verify the payment happened and the amount matches before recording it. Idempotent on `gatewayReference`. Recommended over the raw repayment endpoint.",
+        "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmitPaymentRequest" }, "example": { "gatewayReference": "MPESA-ABC123XYZ", "amount": 35000, "fspId": "CLICKPESA", "note": "Collected by partner app" } } } },
+        "responses": { "200": { "description": "Verified and recorded" }, "400": { "description": "Verification failed or amount mismatch" } }
+      }
+    },
+    "/v1/lms/loans/{loanId}/pay-link": {
+      "get": {
+        "tags": ["Lending"],
+        "summary": "Get a shareable pay link",
+        "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
+        "responses": { "200": { "description": "Pay link", "content": { "application/json": { "example": { "loanId": "5c9e2b3c-4d5e-6f7a-8b9c-1d2e3f4a5b6c", "payLink": "https://reli.finance/pay/5c9e2b3c-4d5e-6f7a-8b9c-1d2e3f4a5b6c" } } } } }
+      }
+    },
+    "/v1/lms/payment-types": {
+      "get": {
+        "tags": ["Lending"],
+        "summary": "List payment types",
+        "description": "Returns the `paymentTypeId` values accepted by the repayment endpoint.",
+        "responses": { "200": { "description": "Payment types" } }
+      }
+    },
+    "/v1/wms/products": {
+      "get": { "tags": ["Wallets"], "summary": "List wallet products", "responses": { "200": { "description": "Wallet products" } } }
+    },
+    "/v1/wms/wallets": {
+      "post": {
+        "tags": ["Wallets"],
+        "summary": "Open a wallet",
+        "description": "`businessId` is taken from your token. Newly opened wallets must be approved and activated before use.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OpenWalletRequest" }, "example": { "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "productCode": "CSAV" } } } },
+        "responses": { "201": { "description": "Wallet opened", "content": { "application/json": { "example": { "id": "a1b2c3d4-0000-0000-0000-000000000000", "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "productCode": "CSAV", "fspAccountId": "4921", "createdAt": "2026-01-01T10:00:00.000Z" } } } } }
+      },
+      "get": {
+        "tags": ["Wallets"],
+        "summary": "List wallets for a customer",
+        "parameters": [{ "name": "customerId", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "Wallets" } }
+      }
+    },
+    "/v1/wms/wallets/{walletId}": {
+      "get": {
+        "tags": ["Wallets"],
+        "summary": "Get wallet",
+        "description": "Includes `balanceMinor`, status, and any linked loan. Balances are in minor units (cents).",
+        "parameters": [{ "$ref": "#/components/parameters/WalletId" }],
+        "responses": { "200": { "description": "Wallet", "content": { "application/json": { "example": { "id": "a1b2c3d4-0000-0000-0000-000000000000", "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "productCode": "CSAV", "balanceMinor": 500000, "currency": "TZS", "status": "ACTIVE" } } } } }
+      }
+    },
+    "/v1/wms/wallets/{walletId}/approve": {
+      "post": { "tags": ["Wallets"], "summary": "Approve a wallet", "parameters": [{ "$ref": "#/components/parameters/WalletId" }], "responses": { "200": { "description": "Approved" } } }
+    },
+    "/v1/wms/wallets/{walletId}/activate": {
+      "post": { "tags": ["Wallets"], "summary": "Activate a wallet", "parameters": [{ "$ref": "#/components/parameters/WalletId" }], "responses": { "200": { "description": "Activated" } } }
+    },
+    "/v1/wms/wallets/{walletId}/transactions": {
+      "get": { "tags": ["Wallets"], "summary": "List wallet transactions", "parameters": [{ "$ref": "#/components/parameters/WalletId" }], "responses": { "200": { "description": "Transactions" } } }
+    },
+    "/v1/wms/wallets/{walletId}/submit-deposit": {
+      "post": {
+        "tags": ["Wallets"],
+        "summary": "Submit & verify a wallet deposit",
+        "description": "Bridge verifies the deposit on the gateway before crediting the wallet. Idempotent on `gatewayReference`. `amount` is in MAJOR units.",
+        "parameters": [{ "$ref": "#/components/parameters/WalletId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmitDepositRequest" }, "example": { "gatewayReference": "MPESA-DEF456UVW", "amount": 50000, "fspId": "CLICKPESA", "description": "Deposit via partner gateway" } } } },
+        "responses": { "200": { "description": "Verified and credited" } }
+      }
+    },
+    "/v1/wms/wallets/{walletId}/reserve": {
+      "post": {
+        "tags": ["Wallets"],
+        "summary": "Reserve funds (escrow hold)",
+        "description": "Places a hold for the hold-and-capture pattern. `amount` is in MAJOR units. Returns a `transactionId` to commit or release.",
+        "parameters": [{ "$ref": "#/components/parameters/WalletId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReserveRequest" }, "example": { "amount": 15000, "currency": "TZS", "reference": "ORDER-2026-001", "description": "Hold for merchant delivery" } } } },
+        "responses": { "200": { "description": "Hold placed", "content": { "application/json": { "example": { "transactionId": "tx-uuid-..." } } } } }
+      }
+    },
+    "/v1/wms/transactions/{transactionId}/commit": {
+      "post": { "tags": ["Wallets"], "summary": "Commit (capture) a hold", "parameters": [{ "$ref": "#/components/parameters/TransactionId" }], "requestBody": { "content": { "application/json": { "example": { "note": "Merchant confirmed delivery" } } } }, "responses": { "200": { "description": "Captured" } } }
+    },
+    "/v1/wms/transactions/{transactionId}/release": {
+      "post": { "tags": ["Wallets"], "summary": "Release (cancel) a hold", "parameters": [{ "$ref": "#/components/parameters/TransactionId" }], "requestBody": { "content": { "application/json": { "example": { "reason": "Customer cancelled order" } } } }, "responses": { "200": { "description": "Released" } } }
+    },
+    "/collection/mobile": {
+      "post": {
+        "tags": ["Collections"],
+        "summary": "Trigger a mobile (USSD) collection",
+        "description": "Initiates a USSD push to the payer's phone. Uses the Collections gateway server + its own Bearer token. `transactionId` is your own unique reference (used to poll status and as an idempotency key).",
+        "servers": [{ "url": "https://{gatewayHost}/api", "variables": { "gatewayHost": { "default": "api.reli.co.tz" } } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MobileCollectionRequest" }, "example": { "amount": 5000, "currency": "TZS", "payerPhone": "255700000000", "fspId": "CLICKPESA", "transactionId": "ORDER_12345" } } } },
+        "responses": { "200": { "description": "Collection initiated" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/collection/status": {
+      "get": {
+        "tags": ["Collections"],
+        "summary": "Poll collection status",
+        "servers": [{ "url": "https://{gatewayHost}/api", "variables": { "gatewayHost": { "default": "api.reli.co.tz" } } }],
+        "parameters": [
+          { "name": "transactionId", "in": "query", "required": true, "schema": { "type": "string" }, "example": "ORDER_12345" },
+          { "name": "fspId", "in": "query", "required": true, "schema": { "type": "string", "default": "CLICKPESA" } }
+        ],
+        "responses": { "200": { "description": "Status (poll until COMPLETED)" } }
+      }
+    },
+    "/collection/transactions": {
+      "get": {
+        "tags": ["Collections"],
+        "summary": "List collection transactions",
+        "description": "Paginated, newest first.",
+        "servers": [{ "url": "https://{gatewayHost}/api", "variables": { "gatewayHost": { "default": "api.reli.co.tz" } } }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": { "200": { "description": "Collection transactions" } }
       }
     }
   },
   "components": {
-    "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
-          },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
-          }
-        }
-      },
-      "NewPlant": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Plant"
-          },
-          {
-            "required": [
-              "id"
-            ],
-            "type": "object",
-            "properties": {
-              "id": {
-                "description": "Identification number of the plant",
-                "type": "integer",
-                "format": "int64"
-              }
-            }
-          }
-        ]
-      },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Bearer token from POST /generate-token. Expires ~1h; on 401, re-generate and retry once." }
+    },
+    "parameters": {
+      "CustomerId": { "name": "customerId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "LoanId": { "name": "loanId", "in": "path", "required": true, "schema": { "type": "string" } },
+      "WalletId": { "name": "walletId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "TransactionId": { "name": "transactionId", "in": "path", "required": true, "schema": { "type": "string" } }
+    },
+    "responses": {
+      "Unauthorized": { "description": "Missing/expired token. Re-call /generate-token and retry once.", "content": { "application/json": { "example": { "error": { "code": "UNAUTHORIZED", "message": "Token expired or invalid" } } } } },
+      "NotFound": { "description": "Resource not found", "content": { "application/json": { "example": { "error": { "code": "NOT_FOUND", "message": "Resource not found" } } } } }
+    },
+    "schemas": {
+      "GenerateTokenRequest": {
+        "type": "object", "required": ["keyId", "secret"],
+        "properties": { "keyId": { "type": "string" }, "secret": { "type": "string" } }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time", "nullable": true },
+          "businessId": { "type": "string" },
+          "environment": { "type": "string", "enum": ["sandbox", "production"] },
+          "scopes": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "UpsertCustomerRequest": {
+        "type": "object", "required": ["legalName", "type"],
+        "properties": {
+          "customerId": { "type": "string", "format": "uuid", "description": "Omit to create; include to update." },
+          "legalName": { "type": "string" },
+          "type": { "type": "string", "enum": ["PERSON", "BUSINESS"] },
+          "mobile": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "dob": { "type": "string", "description": "yyyy-MM-dd" },
+          "nationalId": { "type": "string" },
+          "address": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "SubmitKycRequest": {
+        "type": "object", "required": ["documents"],
+        "properties": {
+          "documents": { "type": "array", "items": { "type": "object", "properties": { "type": { "type": "string" }, "url": { "type": "string" } } } },
+          "identifiers": { "type": "array", "items": { "type": "object", "properties": { "type": { "type": "string" }, "value": { "type": "string" } } } }
+        }
+      },
+      "CreateLoanRequest": {
+        "type": "object", "required": ["productCode", "principal"],
+        "properties": {
+          "customerId": { "type": "string", "format": "uuid" },
+          "productCode": { "type": "string" },
+          "principal": { "type": "number", "description": "MAJOR units (e.g. 100000 = 100,000 TZS). NOT minor units." },
+          "numberOfRepayments": { "type": "integer" },
+          "repaymentEvery": { "type": "integer" },
+          "repaymentFrequency": { "type": "string", "enum": ["DAYS", "WEEKS", "MONTHS", "YEARS"] },
+          "interestRatePerPeriod": { "type": "number" },
+          "expectedDisbursementDate": { "type": "string", "description": "yyyy-MM-dd" },
+          "linkWalletId": { "type": "string", "format": "uuid", "description": "Strategy B: attach an existing wallet." },
+          "createWalletProductCode": { "type": "string", "description": "Strategy C: auto-provision a wallet + auto-sweep standing instruction." },
+          "fspFundId": { "type": "integer" }
+        }
+      },
+      "RepaymentRequest": {
+        "type": "object", "required": ["transactionAmount", "transactionDate", "paymentTypeId"],
+        "properties": {
+          "transactionAmount": { "type": "number", "description": "MAJOR units." },
+          "transactionDate": { "type": "string", "description": "yyyy-MM-dd" },
+          "paymentTypeId": { "type": "integer", "description": "From GET /v1/lms/payment-types." },
+          "receiptNumber": { "type": "string", "description": "Your unique reference; acts as idempotency key." },
+          "note": { "type": "string" }
+        }
+      },
+      "SubmitPaymentRequest": {
+        "type": "object", "required": ["gatewayReference", "amount"],
+        "properties": {
+          "gatewayReference": { "type": "string", "description": "Your gateway's transaction reference; idempotency key." },
+          "amount": { "type": "number", "description": "MAJOR units; must match the verified gateway amount." },
+          "fspId": { "type": "string", "example": "CLICKPESA" },
+          "note": { "type": "string" }
+        }
+      },
+      "OpenWalletRequest": {
+        "type": "object", "required": ["customerId", "productCode"],
+        "properties": { "customerId": { "type": "string", "format": "uuid" }, "productCode": { "type": "string" } }
+      },
+      "SubmitDepositRequest": {
+        "type": "object", "required": ["gatewayReference", "amount"],
+        "properties": {
+          "gatewayReference": { "type": "string", "description": "Idempotency key." },
+          "amount": { "type": "number", "description": "MAJOR units." },
+          "fspId": { "type": "string", "example": "CLICKPESA" },
+          "description": { "type": "string" }
+        }
+      },
+      "ReserveRequest": {
+        "type": "object", "required": ["amount", "currency"],
+        "properties": {
+          "amount": { "type": "number", "description": "MAJOR units." },
+          "currency": { "type": "string", "example": "TZS" },
+          "reference": { "type": "string", "description": "Your order reference." },
+          "description": { "type": "string" }
+        }
+      },
+      "MobileCollectionRequest": {
+        "type": "object", "required": ["amount", "currency", "payerPhone", "fspId", "transactionId"],
+        "properties": {
+          "amount": { "type": "number", "description": "Collection amount." },
+          "currency": { "type": "string", "example": "TZS" },
+          "payerPhone": { "type": "string", "example": "255700000000" },
+          "fspId": { "type": "string", "example": "CLICKPESA" },
+          "transactionId": { "type": "string", "description": "Your unique reference; used to poll status." }
+        }
       }
     }
   }

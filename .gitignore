@@ -1,0 +1,4 @@
+mcp/node_modules/
+mcp/dist/
+tools/node_modules/
+tools/.live-filtered.json

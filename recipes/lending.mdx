@@ -1,0 +1,95 @@
+---
+title: "Lending"
+description: "Create a loan, preview its schedule, disburse, and record repayments."
+icon: "hand-holding-dollar"
+---
+
+Originate and service loans. Loans can stand alone or link to a wallet that auto-sweeps repayments (see [BNPL](/recipes/bnpl)).
+
+<Warning>
+**Money units:** loan `principal` and repayment `transactionAmount` are in **major units** (`100000` = 100,000 TZS) — not minor units. Sending the wrong scale can disburse 100x. See [Conventions](/concepts/conventions).
+</Warning>
+
+<Note>Requires an active customer ([KYC](/recipes/kyc-onboarding)). Bearer token from [`/generate-token`](/authentication); re-token on `401`.</Note>
+
+## Pick a product
+
+```bash
+curl -s $BRIDGE_URL/v1/lms/products -H "Authorization: Bearer $TOKEN" | jq
+```
+
+Each product carries `terms` (min/max principal, repayments) and `interest`. Use the `code` when creating a loan.
+
+## Preview the schedule (optional)
+
+Show the customer their installments before committing — no record created.
+
+```bash
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/calculate-schedule \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"customerId\":\"$CUSTOMER_ID\",\"productCode\":\"PERSONAL_LOAN_001\",\"principal\":100000,\"numberOfRepayments\":3,\"repaymentFrequency\":\"MONTHS\"}" | jq
+```
+
+## Originate → approve → disburse
+
+<Steps>
+<Step title="Create the loan">
+```bash
+LOAN=$(curl -s -X POST $BRIDGE_URL/v1/lms/loans \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"customerId\":\"$CUSTOMER_ID\",\"productCode\":\"PERSONAL_LOAN_001\",\"principal\":100000,\"numberOfRepayments\":3,\"repaymentFrequency\":\"MONTHS\",\"expectedDisbursementDate\":\"$(date +%F)\"}")
+LOAN_ID=$(echo $LOAN | jq -r .loanId)
+```
+Returns `{ loanId, externalLoanId, state: "PENDING", ... }`.
+</Step>
+<Step title="Approve">
+```bash
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/approve \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"approvedOnDate\":\"$(date +%F)\",\"note\":\"Credit check passed.\"}"
+```
+</Step>
+<Step title="Disburse">
+```bash
+# Direct disbursement (no linked wallet):
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/disburse \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"disbursedOnDate\":\"$(date +%F)\"}"
+```
+For a wallet-linked loan, use `disburse-to-savings` instead — see [BNPL](/recipes/bnpl).
+</Step>
+</Steps>
+
+## Inspect the loan
+
+```bash
+curl -s $BRIDGE_URL/v1/lms/loans/$LOAN_ID/schedule -H "Authorization: Bearer $TOKEN" | jq
+```
+
+## Record repayments
+
+Two ways. **Verified** (recommended) checks the payment on the gateway before posting:
+
+```bash
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/submit-payment \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "gatewayReference": "MPESA-ABC123XYZ", "amount": 35000, "fspId": "CLICKPESA" }'
+```
+
+**Direct** records a repayment you've already reconciled (`receiptNumber` is the idempotency key, `paymentTypeId` from `GET /v1/lms/payment-types`):
+
+```bash
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/repayments \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "transactionAmount": 35000, "transactionDate": "2026-04-10", "paymentTypeId": 1, "receiptNumber": "REC-123456" }'
+```
+
+## Share a pay link
+
+```bash
+curl -s $BRIDGE_URL/v1/lms/loans/$LOAN_ID/pay-link -H "Authorization: Bearer $TOKEN" | jq -r .payLink
+```
+
+## Next
+
+<Card title="Collect the repayment" icon="money-bill-transfer" href="/recipes/collections" horizontal>Trigger a USSD push and post the verified payment to this loan.</Card>

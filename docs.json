@@ -17,65 +17,48 @@
             "group": "Getting started",
             "pages": [
               "index",
-              "onboarding"
+              "getting-started",
+              "onboarding",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core concepts",
+            "pages": [
+              "concepts/conventions",
+              "concepts/errors"
+            ]
+          },
+          {
+            "group": "AI agents",
+            "pages": [
+              "mcp"
             ]
           }
         ]
       },
       {
-        "tab": "Embedded Finance",
+        "tab": "Recipes",
         "groups": [
           {
-            "group": "Product APIs",
+            "group": "Build a flow",
             "pages": [
-              "services/embedded-finance/kyc",
-              "services/embedded-finance/lms",
-              "services/embedded-finance/wms"
+              "recipes/kyc-onboarding",
+              "recipes/wallets",
+              "recipes/lending",
+              "recipes/bnpl",
+              "recipes/collections"
             ]
           }
         ]
       },
       {
-        "tab": "Payments & Transfers",
-        "groups": [
-          {
-            "group": "Product APIs",
-            "pages": [
-              "services/payments-transfers"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Open Banking & Identity",
-        "groups": [
-          {
-            "group": "Product APIs",
-            "pages": [
-              "services/open-banking-identity"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "FSP Integrations",
-        "groups": [
-          {
-            "group": "Product APIs",
-            "pages": [
-              "services/fsp-integrations"
-            ]
-          }
-        ]
+        "tab": "API reference",
+        "openapi": "/api-reference/openapi.json"
       }
     ],
     "global": {
       "anchors": [
-        {
-          "anchor": "Website",
-          "href": "https://bridge.example.com",
-          "icon": "globe"
-        },
         {
           "anchor": "Dashboard",
           "href": "https://app.bridge.usereli.tech",
@@ -97,7 +80,7 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:support@bridge.example.com"
+        "href": "mailto:support@usereli.tech"
       }
     ],
     "primary": {
@@ -107,22 +90,11 @@
     }
   },
   "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+    "options": ["copy", "view", "chatgpt", "claude", "mcp", "cursor", "vscode"]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "website": "https://usereli.tech"
     }
   }
 }

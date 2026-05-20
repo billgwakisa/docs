@@ -1,0 +1,69 @@
+---
+title: "Bridge MCP server"
+description: "Give your AI agent the Bridge API — safely. Read tools by default, money-movers only when you unlock them."
+icon: "robot"
+---
+
+The Bridge MCP server lets an AI agent (Claude Code, Cursor, any MCP client) call Bridge directly. Tools are generated from the [API reference](/api-reference/openapi/post-generate-token), so they always match the docs.
+
+<Note>
+Prototype, shipped in the docs repo under `mcp/`. It will graduate to `npx @bridge/mcp`.
+</Note>
+
+## Safety: you decide at launch, not the agent
+
+<Columns cols={2}>
+  <Card title="Environment is fixed by the key" icon="lock">
+    You start the server with a sandbox or production key. The agent cannot switch environments at call time.
+  </Card>
+  <Card title="Money-movers are locked by default" icon="shield-halved">
+    Disburse, repayments, deposits, escrow capture, and collection triggers are only available when you launch with `BRIDGE_ENABLE_MONEY_MOVERS=true`.
+  </Card>
+</Columns>
+
+By default the agent gets read/lookup tools and safe writes (create customer, open wallet). It cannot move real funds unless you explicitly unlock that when starting the server.
+
+## Install
+
+```bash
+cd mcp
+npm install
+npm run build
+```
+
+## Claude Code
+
+```bash
+BRIDGE_BAAS_KEY_ID=your-key-id \
+BRIDGE_BAAS_SECRET=your-secret \
+BRIDGE_ENVIRONMENT=sandbox \
+claude mcp add bridge -- node /absolute/path/to/docs/mcp/dist/index.js
+```
+
+## Cursor (`~/.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "bridge": {
+      "command": "node",
+      "args": ["/absolute/path/to/docs/mcp/dist/index.js"],
+      "env": {
+        "BRIDGE_BAAS_KEY_ID": "your-key-id",
+        "BRIDGE_BAAS_SECRET": "your-secret",
+        "BRIDGE_ENVIRONMENT": "sandbox"
+      }
+    }
+  }
+}
+```
+
+Add `"BRIDGE_ENABLE_MONEY_MOVERS": "true"` (sandbox only, to start) to let the agent run full flows. Add `BRIDGE_GATEWAY_KEY_ID`/`BRIDGE_GATEWAY_SECRET` to enable [collection](/recipes/collections) tools.
+
+## Try it
+
+Once connected, ask your agent: *"List the loan products, then onboard a customer named Jane Doe."* With money-movers unlocked in sandbox: *"Originate a 100,000 TZS loan for Jane with an auto-provisioned wallet and disburse it."*
+
+<Warning>
+Point it at a **sandbox** key first. Only unlock money-movers against production once you trust the flow. See [Conventions](/concepts/conventions) for the money-unit footgun.
+</Warning>

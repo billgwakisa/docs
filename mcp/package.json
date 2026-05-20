@@ -1,0 +1,20 @@
+{
+  "name": "@bridge/mcp",
+  "version": "0.1.0",
+  "description": "Bridge BaaS MCP server — exposes the curated Bridge API to AI agents, with launch-time safety locks. Prototype; will move to its own package.",
+  "type": "module",
+  "bin": { "bridge-mcp": "dist/index.js" },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "node --loader ts-node/esm src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": { "node": ">=18" }
+}

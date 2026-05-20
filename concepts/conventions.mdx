@@ -1,0 +1,46 @@
+---
+title: "Conventions"
+description: "Money units, IDs, idempotency, and environments — read this before sending money."
+icon: "ruler"
+---
+
+## Money units — read this first
+
+<Warning>
+Amount units are **not uniform** across the API. Sending the wrong scale can move 100x the intended amount.
+</Warning>
+
+| Where | Unit | Example |
+|-------|------|---------|
+| Wallet balances, `amountMinor`, top-ups | **Minor units** (cents) | `500000` = 5,000.00 TZS |
+| Loan `principal`, repayment `transactionAmount` | **Major units** | `100000` = 100,000 TZS |
+| `submit-deposit` / `submit-payment` / `reserve` `amount` | **Major units** | `50000` = 50,000 TZS |
+
+Every money field in the [API reference](/api-reference/openapi/post-generate-token) states its unit. When in doubt, read the field description, not the field name.
+
+> We are standardizing money units across the API. Until then, treat the table above as authoritative.
+
+## IDs
+
+- Bridge resource IDs (`customerId`, wallet `id`, `loanId`) are UUIDs or opaque strings — store them as-is.
+- Some read responses include `externalData` / engine fields (integer `id`, statuses like `loanStatusType.active`). Those reflect the underlying core-banking engine; use the Bridge IDs for your calls.
+
+## Idempotency
+
+Money-moving calls are idempotent on a reference you supply — reuse the same reference to safely retry:
+
+| Endpoint | Idempotency key |
+|----------|-----------------|
+| `POST /v1/lms/loans/{id}/repayments` | `receiptNumber` |
+| `POST /v1/lms/loans/{id}/submit-payment` | `gatewayReference` |
+| `POST /v1/wms/wallets/{id}/submit-deposit` | `gatewayReference` |
+| `POST /v1/wms/wallets/{id}/reserve` | `reference` |
+| `POST /collection/mobile` | `transactionId` |
+
+## Environments
+
+Your token carries `environment: "sandbox" | "production"`. Build against `sandbox`; switch by using a production key after approval. Resource IDs do not transfer between environments.
+
+## Dates
+
+Dates are `yyyy-MM-dd` (e.g. `2026-03-15`). Timestamps are ISO 8601.
