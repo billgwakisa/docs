@@ -1,0 +1,88 @@
+---
+title: "First call in 5 minutes"
+description: "Go from API keys to a real money event — disburse a loan into a wallet — without leaving your terminal."
+icon: "bolt"
+---
+
+This is the fast path: token → list products → make money move. Every command is copy-paste. Target time: under 5 minutes.
+
+<Steps>
+<Step title="Get your keys">
+Sign up in the [Dashboard](https://app.bridge.usereli.tech) and create an API key under **Settings → Developer**. You get a `keyId` and a `secret`, scoped to a `sandbox` environment by default.
+
+```bash
+export BRIDGE_URL="https://services.finance.reli.co.tz/api"
+export KEY_ID="your-key-id"
+export SECRET="your-api-secret"
+```
+</Step>
+
+<Step title="Exchange them for a token">
+```bash
+export TOKEN=$(curl -s -X POST $BRIDGE_URL/generate-token \
+  -H "Content-Type: application/json" \
+  -d "{\"keyId\":\"$KEY_ID\",\"secret\":\"$SECRET\"}" | jq -r .token)
+echo $TOKEN
+```
+The token is a Bearer JWT valid for ~1 hour. On any `401`, just run this again. See [Authentication](/authentication).
+</Step>
+
+<Step title="Make your first call">
+```bash
+curl -s $BRIDGE_URL/v1/lms/products \
+  -H "Authorization: Bearer $TOKEN" | jq
+```
+You should see your configured loan products. That confirms auth works.
+</Step>
+
+<Step title="Make money move (the fun part)">
+Create a customer, give them a wallet, originate a loan that auto-provisions the wallet, and disburse into it.
+
+```bash
+# 1. Create + activate a customer
+CUSTOMER=$(curl -s -X POST $BRIDGE_URL/v1/kyc/customers \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"legalName":"Jane Doe","type":"PERSON","mobile":"+255700000111"}')
+CUSTOMER_ID=$(echo $CUSTOMER | jq -r '.customerId // .id')
+
+curl -s -X PATCH $BRIDGE_URL/v1/kyc/customers/$CUSTOMER_ID/activate \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"customerId\":\"$CUSTOMER_ID\",\"status\":\"ACTIVE\",\"activatedOn\":\"$(date +%F)\"}" >/dev/null
+
+# 2. Pick a published loan product (principal is in MAJOR units)
+PRODUCT=$(curl -s $BRIDGE_URL/v1/lms/products -H "Authorization: Bearer $TOKEN" \
+  | jq -r '[.[] | select(.status=="published")][0].productCode')
+
+LOAN=$(curl -s -X POST $BRIDGE_URL/v1/lms/loans \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"customerId\":\"$CUSTOMER_ID\",\"productCode\":\"$PRODUCT\",\"principal\":100000}")
+LOAN_ID=$(echo $LOAN | jq -r '.loanId')
+
+# 3. Approve + disburse
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/approve \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"approvedOnDate\":\"$(date +%F)\"}" >/dev/null
+
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/disburse \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"disbursedOnDate\":\"$(date +%F)\"}" | jq
+```
+
+You just onboarded a customer and disbursed a real loan — actual ledger entries on the partner bank. That is the platform working end to end. To disburse into a wallet instead, see the [BNPL recipe](/recipes/bnpl).
+</Step>
+</Steps>
+
+<Warning>
+**`principal` is in major units** (`100000` = 100,000 TZS). Wallet amounts elsewhere use minor units. This mismatch is the most common money bug — see [Conventions](/concepts/conventions).
+</Warning>
+
+## Next
+
+<Columns cols={2}>
+  <Card title="KYC onboarding recipe" icon="id-card" href="/recipes/kyc-onboarding">
+    The robust version: dedup by phone, submit documents, handle activation review.
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/openapi/post-generate-token">
+    Every endpoint, with a live "Send" playground.
+  </Card>
+</Columns>

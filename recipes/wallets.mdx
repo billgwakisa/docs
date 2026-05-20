@@ -1,0 +1,83 @@
+---
+title: "Wallets"
+description: "Open a wallet, fund it with a verified deposit, and run an escrow hold-and-capture."
+icon: "wallet"
+---
+
+Wallets hold stored value for a customer. Deposits are **gateway-verified** before they credit. Escrow lets you hold funds and capture or release them later.
+
+<Note>Requires an active customer — see [Customer onboarding](/recipes/kyc-onboarding). Bearer token from [`/generate-token`](/authentication); re-token on `401`.</Note>
+
+## Open and activate a wallet
+
+A new wallet must be opened, approved, then activated before use.
+
+<Steps>
+<Step title="Open">
+```bash
+WALLET=$(curl -s -X POST $BRIDGE_URL/v1/wms/wallets \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"customerId\":\"$CUSTOMER_ID\",\"productCode\":\"CSAV\"}")
+WALLET_ID=$(echo $WALLET | jq -r .id)
+```
+`businessId` is taken from your token. Use `GET /v1/wms/products` to list wallet product codes.
+</Step>
+<Step title="Approve + activate">
+```bash
+curl -s -X POST $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/approve  -H "Authorization: Bearer $TOKEN" -d '{}'
+curl -s -X POST $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/activate -H "Authorization: Bearer $TOKEN" -d '{}'
+```
+</Step>
+</Steps>
+
+## Fund it (verified deposit)
+
+When your gateway has collected money (see [Collections](/recipes/collections)), record it. Bridge verifies the deposit on the gateway before crediting. Idempotent on `gatewayReference`.
+
+```bash
+curl -s -X POST $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/submit-deposit \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "gatewayReference": "MPESA-DEF456UVW", "amount": 50000, "fspId": "CLICKPESA", "description": "Top-up" }'
+```
+
+<Warning>`amount` here is in **major units** (`50000` = 50,000 TZS). Wallet **balances** read back in minor units (`balanceMinor`). See [Conventions](/concepts/conventions).</Warning>
+
+Check the balance and history:
+
+```bash
+curl -s $BRIDGE_URL/v1/wms/wallets/$WALLET_ID -H "Authorization: Bearer $TOKEN" | jq
+curl -s $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/transactions -H "Authorization: Bearer $TOKEN" | jq
+```
+
+## Escrow: hold and capture
+
+The marketplace pattern — reserve funds, then commit on delivery or release on cancellation.
+
+<Steps>
+<Step title="Reserve (place a hold)">
+```bash
+RES=$(curl -s -X POST $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/reserve \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "amount": 15000, "currency": "TZS", "reference": "ORDER-2026-001", "description": "Hold for delivery" }')
+TX_ID=$(echo $RES | jq -r .transactionId)
+```
+</Step>
+<Step title="Commit (capture) — on delivery">
+```bash
+curl -s -X POST $BRIDGE_URL/v1/wms/transactions/$TX_ID/commit \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "note": "Merchant confirmed delivery" }'
+```
+</Step>
+<Step title="…or release — on cancellation">
+```bash
+curl -s -X POST $BRIDGE_URL/v1/wms/transactions/$TX_ID/release \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "reason": "Customer cancelled" }'
+```
+</Step>
+</Steps>
+
+## Next
+
+<Card title="BNPL" icon="cart-shopping" href="/recipes/bnpl" horizontal>Combine an escrow down-payment with a loan and auto-sweep repayments.</Card>

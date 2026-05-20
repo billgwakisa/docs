@@ -1,0 +1,85 @@
+---
+title: "Payment collections"
+description: "Trigger a mobile (USSD) collection, poll until it completes, then post the verified payment."
+icon: "money-bill-transfer"
+---
+
+Collect money from a customer's phone via a USSD push, then record the verified payment against a loan or wallet. Collections run on a **separate gateway service** with its own base URL and key — but the same Bearer model.
+
+<Warning>
+The Collections gateway uses a **different** `keyId`/`secret` and base URL than the BaaS core. Generate a token from the gateway with the gateway's key.
+</Warning>
+
+```bash
+export GATEWAY_URL="https://<your-collections-gateway-host>/api"   # separate from the BaaS host
+export GW_TOKEN=$(curl -s -X POST $GATEWAY_URL/generate-token \
+  -H "Content-Type: application/json" \
+  -d "{\"keyId\":\"$GATEWAY_KEY_ID\",\"secret\":\"$GATEWAY_SECRET\"}" | jq -r .token)
+```
+
+## Flow
+
+```
+trigger USSD push ─▶ customer approves on phone ─▶ poll status ──COMPLETED──▶ record verified payment
+```
+
+<Steps>
+<Step title="Trigger the collection">
+`transactionId` is your own unique reference — you'll poll status with it, and it acts as the idempotency key.
+
+```bash
+curl -s -X POST $GATEWAY_URL/collection/mobile \
+  -H "Authorization: Bearer $GW_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "amount": 5000,
+    "currency": "TZS",
+    "payerPhone": "255700000000",
+    "fspId": "CLICKPESA",
+    "transactionId": "ORDER_12345"
+  }'
+```
+
+The customer receives a USSD prompt to approve the payment.
+</Step>
+
+<Step title="Poll for status">
+```bash
+curl -s "$GATEWAY_URL/collection/status?transactionId=ORDER_12345&fspId=CLICKPESA" \
+  -H "Authorization: Bearer $GW_TOKEN" | jq
+```
+
+Poll until the status is `COMPLETED` (or a terminal failure). Back off between polls.
+</Step>
+
+<Step title="Record the verified payment">
+Once collected, post it to the BaaS core (different token). Bridge re-verifies on the gateway before it moves the ledger. Idempotent on `gatewayReference`.
+
+```bash
+# Toward a loan repayment:
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/submit-payment \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "gatewayReference": "ORDER_12345", "amount": 5000, "fspId": "CLICKPESA" }'
+
+# …or as a wallet deposit:
+curl -s -X POST $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/submit-deposit \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "gatewayReference": "ORDER_12345", "amount": 5000, "fspId": "CLICKPESA" }'
+```
+
+<Warning>`amount` here is in **major units**. See [Conventions](/concepts/conventions).</Warning>
+</Step>
+</Steps>
+
+## List your collections
+
+```bash
+curl -s "$GATEWAY_URL/collection/transactions?page=1&limit=10" \
+  -H "Authorization: Bearer $GW_TOKEN" | jq
+```
+
+Paginated, newest first.
+
+## Tie it together
+
+- Fund a **wallet** → use `submit-deposit`. With a BNPL standing instruction, that funded wallet auto-sweeps the loan ([BNPL](/recipes/bnpl)).
+- Collect a **loan repayment** → use `submit-payment` against the loan ([Lending](/recipes/lending)).

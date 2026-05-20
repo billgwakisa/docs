@@ -1,0 +1,99 @@
+---
+title: "BNPL (Buy Now, Pay Later)"
+description: "Hold a down-payment in escrow, finance the rest with a wallet-linked loan, disburse, then capture the down-payment."
+icon: "cart-shopping"
+---
+
+Buy Now, Pay Later in one flow: hold the customer's down-payment in escrow, open a wallet and link a loan to it, disburse into that wallet, then capture the down-payment. This is the production-verified path.
+
+<Note>Requires an active customer ([KYC](/recipes/kyc-onboarding)). Bearer token from [`/generate-token`](/authentication); re-token on `401`. Amounts on loans are **major units** — see [Conventions](/concepts/conventions).</Note>
+
+## Flow
+
+```
+open + approve + activate wallet
+        │
+        ▼
+fund wallet ─▶ reserve down-payment (escrow hold)
+        │
+        ▼
+create loan ──linkWalletId──▶ approve ─▶ disburse-to-savings (credits the wallet)
+        │
+        ▼
+commit the down-payment hold
+```
+
+<Steps>
+<Step title="Open the customer's wallet">
+```bash
+WALLET=$(curl -s -X POST $BRIDGE_URL/v1/wms/wallets \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"customerId\":\"$CUSTOMER_ID\",\"productCode\":\"SAV2\"}")
+WALLET_ID=$(echo $WALLET | jq -r .id)
+
+curl -s -X POST $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/approve  -H "Authorization: Bearer $TOKEN" -d '{}'
+curl -s -X POST $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/activate -H "Authorization: Bearer $TOKEN" -d '{}'
+```
+Use a published wallet product code from `GET /v1/wms/products`.
+</Step>
+
+<Step title="Reserve the down-payment">
+With the wallet funded (see [Collections](/recipes/collections)), place a hold for the down-payment.
+
+```bash
+RES=$(curl -s -X POST $BRIDGE_URL/v1/wms/wallets/$WALLET_ID/reserve \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "amount": 20000, "currency": "TZS", "reference": "BNPL-ORDER-77", "description": "Down payment" }')
+TX_ID=$(echo $RES | jq -r .transactionId)
+```
+</Step>
+
+<Step title="Create the loan, linked to the wallet">
+Pass `linkWalletId` so disbursements and repayments route through this wallet.
+
+```bash
+LOAN=$(curl -s -X POST $BRIDGE_URL/v1/lms/loans \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"customerId\":\"$CUSTOMER_ID\",\"productCode\":\"DF-001\",\"principal\":100000,\"linkWalletId\":\"$WALLET_ID\"}")
+LOAN_ID=$(echo $LOAN | jq -r .loanId)
+```
+
+<Warning>`principal` is in **major units** (`100000` = 100,000 TZS). Use a published loan product code from `GET /v1/lms/products`. See [Conventions](/concepts/conventions).</Warning>
+</Step>
+
+<Step title="Approve and disburse into the wallet">
+```bash
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/approve \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"approvedOnDate\":\"$(date +%F)\"}"
+
+curl -s -X POST $BRIDGE_URL/v1/lms/loans/$LOAN_ID/disburse-to-savings \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"disbursedOnDate\":\"$(date +%F)\"}"
+```
+</Step>
+
+<Step title="Capture the down-payment">
+With the goods delivered / order confirmed, commit the hold.
+
+```bash
+curl -s -X POST $BRIDGE_URL/v1/wms/transactions/$TX_ID/commit \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "note": "Down payment captured" }'
+```
+
+If the order falls through instead, `POST /v1/wms/transactions/$TX_ID/release`.
+</Step>
+</Steps>
+
+## Repayments
+
+Keep the wallet funded (via [Collections](/recipes/collections)) and record repayments against the loan with [`submit-payment`](/recipes/lending#record-repayments).
+
+<Note>
+A one-call shortcut (`createWalletProductCode` on `POST /v1/lms/loans`) is intended to auto-provision the wallet and a standing instruction in a single request. It's temporarily unavailable pending a platform fix — use the open-then-`linkWalletId` flow above, which is verified end to end.
+</Note>
+
+<Warning>
+Disbursed loans can't be cleanly un-disbursed. If a later step fails after disbursement, resolve forward (release the hold, contact Support) rather than rolling back the loan.
+</Warning>

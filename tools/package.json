@@ -1,0 +1,13 @@
+{
+  "name": "bridge-docs-tools",
+  "private": true,
+  "type": "module",
+  "description": "Spec sync + drift checks for the Bridge docs. Not published; not part of the Mintlify site.",
+  "scripts": {
+    "drift-check": "node drift-check.mjs",
+    "build-spec": "node build-spec.mjs",
+    "smoke": "node smoke/smoke.mjs",
+    "smoke:full": "node smoke/smoke.mjs --full"
+  },
+  "engines": { "node": ">=18" }
+}

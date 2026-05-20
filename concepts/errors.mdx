@@ -1,0 +1,54 @@
+---
+title: "Errors & status codes"
+description: "What each error means, why it happens, and how to fix it."
+icon: "triangle-exclamation"
+---
+
+Bridge returns standard HTTP status codes with a JSON error body:
+
+```json
+{
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "Invalid userId value supplied",
+    "details": { "field": "userId" }
+  }
+}
+```
+
+## Status codes
+
+| Status | Meaning | Do this |
+|--------|---------|---------|
+| `200` / `201` | Success | — |
+| `400` | Validation failed, or a verified payment's amount didn't match | Read `error.details`; fix the field or amount and resend |
+| `401` | Token missing or expired | Re-call `/generate-token`, retry once ([Authentication](/authentication)) |
+| `403` | Token lacks the required scope | Check your key's scopes in the Dashboard |
+| `404` | Resource not found | Verify the ID and that it exists in this environment |
+| `409` | Conflict (duplicate idempotency reference in flight) | Reuse the same reference; do not generate a new one |
+| `422` | Semantically invalid (e.g. amount outside product limits) | Adjust to the product's min/max |
+| `5xx` | Upstream/bank error | Retry with backoff; if it persists, contact Support |
+
+## Common cases
+
+<AccordionGroup>
+<Accordion title="401 after it was working" icon="key">
+Your token expired (~1h TTL). Clear it, call `/generate-token` again, and retry the request once. Cache the new token until `expiresAt`.
+</Accordion>
+
+<Accordion title="Customer can't hold a wallet or loan" icon="user">
+The customer isn't `ACTIVE`. Run the [KYC onboarding](/recipes/kyc-onboarding) flow: submit documents, then `PATCH .../activate`. Activation may require manual review.
+</Accordion>
+
+<Accordion title="Disbursed 100x too much (or too little)" icon="money-bill">
+A money-unit mistake. Loan `principal` and `transactionAmount` are **major units**; wallet balances are **minor units**. See [Conventions](/concepts/conventions).
+</Accordion>
+
+<Accordion title="submit-payment returned 400" icon="receipt">
+Bridge verified the payment on the gateway and the amount didn't match (or the `gatewayReference` wasn't found yet). Confirm the collection completed and the `amount` matches before resubmitting.
+</Accordion>
+</AccordionGroup>
+
+<Note>
+Every recipe shows the `401` → re-token → retry path inline, so you rarely hit these by surprise.
+</Note>

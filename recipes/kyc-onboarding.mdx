@@ -1,0 +1,87 @@
+---
+title: "Customer onboarding (KYC)"
+description: "Create a customer, submit KYC, and activate them — the prerequisite for every wallet and loan."
+icon: "id-card"
+---
+
+Every wallet and loan attaches to an **active** customer. This is the first flow you build. It mirrors the production sequence: dedup by phone, create if new, submit documents, activate.
+
+<Note>All calls use a Bearer token from [`/generate-token`](/authentication). On a `401`, re-generate and retry once.</Note>
+
+## Flow
+
+```
+phone lookup ──found──▶ reuse customerId
+     │ not found
+     ▼
+upsert customer ─▶ submit KYC docs ─▶ activate ─▶ ACTIVE
+```
+
+<Steps>
+<Step title="Look up by phone (dedup)">
+Avoid creating duplicates — check if the customer already exists.
+
+```bash
+curl -s "$BRIDGE_URL/v1/kyc/customers/phone/+255700000111" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+If no customer matches, this returns `200` with an empty (`null`) body — treat that as new and continue to create. A populated `200` body is an existing record — reuse its `customerId`.
+</Step>
+
+<Step title="Create (upsert) the customer">
+```bash
+curl -s -X POST $BRIDGE_URL/v1/kyc/customers \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "legalName": "Jane Doe",
+    "type": "PERSON",
+    "mobile": "+255700000111",
+    "email": "jane@example.com",
+    "dob": "1995-01-10"
+  }'
+```
+
+```json Response
+{ "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "legalName": "Jane Doe", "type": "PERSON" }
+```
+
+Store `customerId` (read `customerId || id` — both appear in the wild).
+</Step>
+
+<Step title="Submit KYC documents">
+```bash
+curl -s -X POST $BRIDGE_URL/v1/kyc/customers/$CUSTOMER_ID/kyc \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "documents": [{ "type": "NATIONAL_ID", "url": "https://storage.example.com/id-front.jpg" }],
+    "identifiers": [{ "type": "nid", "value": "TZ-NIN-19900115-001" }]
+  }'
+```
+
+Upload documents to your own storage and pass URLs. `identifiers` carry structured IDs (national ID, TIN, etc.).
+</Step>
+
+<Step title="Activate">
+```bash
+curl -s -X PATCH $BRIDGE_URL/v1/kyc/customers/$CUSTOMER_ID/activate \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d "{\"customerId\":\"$CUSTOMER_ID\",\"status\":\"ACTIVE\",\"activatedOn\":\"$(date +%F)\"}"
+```
+
+```json Response
+{ "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "ACTIVE" }
+```
+
+<Warning>
+Activation can require manual review. If it doesn't return `ACTIVE` immediately, treat the customer as `submitted` and re-check before opening wallets or loans — don't block your flow on it.
+</Warning>
+</Step>
+</Steps>
+
+## Next
+
+<Columns cols={2}>
+  <Card title="Open a wallet" icon="wallet" href="/recipes/wallets">Now give your active customer stored value.</Card>
+  <Card title="Originate a loan" icon="hand-holding-dollar" href="/recipes/lending">Lend to your active customer.</Card>
+</Columns>

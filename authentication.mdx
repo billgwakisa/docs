@@ -1,0 +1,70 @@
+---
+title: "Authentication"
+description: "Exchange your API keys for a short-lived Bearer token, and recover from expiry cleanly."
+icon: "key"
+---
+
+Bridge uses **API keys to mint short-lived Bearer tokens**. You never send your `secret` on product calls — you exchange it once for a token, then send the token.
+
+## Get a token
+
+```bash
+curl -X POST https://services.finance.reli.co.tz/api/generate-token \
+  -H "Content-Type: application/json" \
+  -d '{ "keyId": "00000000-0000-4000-8000-000000000000", "secret": "<your-api-secret>" }'
+```
+
+```json Response
+{
+  "token": "eyJhbGciOi...",
+  "expiresAt": "2026-01-01T12:00:00.000Z",
+  "businessId": "11111111-2222-3333-4444-555555555555",
+  "environment": "sandbox",
+  "scopes": ["lms:read", "lms:write", "wms:read", "wms:write"]
+}
+```
+
+Send it on every other request:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Tokens expire — handle 401 in one place
+
+Tokens last about **1 hour**. The production-proven pattern is: on a `401`, clear the cached token, generate a fresh one, and retry the request **once**.
+
+```ts
+let token: string | null = null;
+
+async function call(path: string, init: RequestInit = {}, retried = false): Promise<any> {
+  if (!token) token = await generateToken();
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    headers: { ...init.headers, "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401 && !retried) {
+    token = null;                 // force refresh
+    return call(path, init, true); // retry once
+  }
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  return res.json();
+}
+```
+
+Cache the token for its lifetime (use `expiresAt`); don't call `/generate-token` on every request.
+
+## Two services, two keys
+
+Bridge has two token-issuing services. Each has its own `keyId`/`secret` and its own base URL, but the **same Bearer model**.
+
+| Service | What it covers | Base URL |
+|---------|----------------|----------|
+| BaaS core | KYC, Lending, Wallets | `https://services.finance.reli.co.tz/api` |
+| Collections gateway | Mobile (USSD) collection | separate gateway host + `/api` |
+
+Generate a token from each service with that service's key. See the [Collections recipe](/recipes/collections) for the gateway flow.
+
+## Environments
+
+Your key is bound to an `environment` (`sandbox` or `production`), returned in the token response. Start in `sandbox`; move to `production` after KYB and approval. See [Onboarding](/onboarding).

@@ -1,55 +1,55 @@
 ---
-title: "Bridge — Overview"
-description: "What Bridge is, why it matters, and the four product categories for builders and operators."
+title: "Bridge — Build with banks, ship like a startup"
+description: "Launch wallets, lending, and payment collections via one API while a bank/FSP keeps custody and compliance."
 ---
 
-## Build with banks, ship like a startup
+Bridge is **Banking-as-a-Service**. You ship financial features; a partner bank/FSP holds custody and owns compliance. You get one set of developer-first APIs for customers, wallets, lending, and payment collections.
 
-Bridge lets software teams launch financial features while banks/FSPs retain custody and compliance. We provide standardized adapters, strong governance, and developer‑first APIs.
+<Note>
+Everything below is built around the flows already running in production. Pick a recipe, copy the code, get a real result.
+</Note>
 
-<Banner>
-Balanced for both founders and engineers: business value at a glance, with the depth developers need to integrate quickly.
-</Banner>
-
+## Start with a recipe
 
 <Columns cols={2}>
-  <Card
-    title="Embedded Finance"
-    icon="wallet"
-    href="/services/embedded-finance"
-  >
-    Wallets and Lending with credit scoring, reporting and reconciliation. Launch stored‑value and credit without becoming a bank.
+  <Card title="Customer onboarding (KYC)" icon="id-card" href="/recipes/kyc-onboarding">
+    Create a customer, submit KYC, activate. Every other flow starts here.
   </Card>
-  <Card
-    title="Payments & Transfers"
-    icon="money-bill-transfer"
-    href="/services/payments-transfers"
-  >
-    Merchant onboarding (TanQR), QR payments, and routing across local rails (bank/PSP/MNO), with webhooks and reconciliation.
+  <Card title="Wallets" icon="wallet" href="/recipes/wallets">
+    Open a wallet, fund it, place and capture escrow holds.
   </Card>
-  <Card
-    title="Open Banking & Identity"
-    icon="id-card"
-    href="/services/open-banking-identity"
-  >
-    Account verification, consented data access, and KYC sharing.
+  <Card title="Lending" icon="hand-holding-dollar" href="/recipes/lending">
+    Create a loan, preview the schedule, disburse, and record repayments.
   </Card>
-  <Card
-    title="FSP Integrations"
-    icon="building-columns"
-    href="/services/fsp-integrations"
-  >
-    Turnkey adapters to banks/PSPs/MNOs including TIPS/TanQR, GL feeds, and regulatory exports.
+  <Card title="BNPL" icon="cart-shopping" href="/recipes/bnpl">
+    Down-payment hold + loan + auto-sweep repayments, end to end.
+  </Card>
+  <Card title="Payment collections" icon="money-bill-transfer" href="/recipes/collections">
+    Trigger a USSD push, poll status, record the verified payment.
+  </Card>
+  <Card title="First call in 5 minutes" icon="bolt" href="/getting-started">
+    Token to first real API response, no detours.
   </Card>
 </Columns>
 
-## Onboarding at a glance
+## How it fits together
 
-- For businesses: create a sandbox account and share KYB details
-- Select the services you need (Embedded Finance, Payments, Open Banking); we issue credentials and permissions
-- For FSPs: register your platform, provide API credentials and supported products; we run connectivity checks
-- Environments: start in sandbox; move to production after tests and approval
+- **KYC** is the authoritative customer store. A customer must be **active** before holding wallets or loans.
+- **Wallets** hold stored value; deposits are gateway-verified; escrow supports hold-and-capture.
+- **Lending** originates loans, optionally linked to a wallet with an auto-sweep standing instruction for repayments.
+- **Collections** trigger mobile (USSD) payments; verified payments post to loans or wallets.
 
 <Card title="Onboarding" icon="user-plus" href="/onboarding" horizontal>
-  Learn how businesses and FSPs join Bridge, what credentials you receive, and how sandbox/production setup works.
+  How businesses join Bridge, what credentials you get, and sandbox vs production.
 </Card>
+
+## Two things to know before you send money
+
+<Columns cols={2}>
+  <Card title="Money units differ" icon="triangle-exclamation" href="/concepts/conventions">
+    Wallet amounts are minor units (cents). Loan `principal` is in major units. Read the field.
+  </Card>
+  <Card title="Tokens expire hourly" icon="key" href="/authentication">
+    On a 401, re-generate the token and retry once. Built into the recipes.
+  </Card>
+</Columns>

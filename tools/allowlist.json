@@ -1,0 +1,41 @@
+{
+  "note": "Curated public surface. BaaS-core paths are FILTERED from the live /docs/json. The collections slice is hand-authored (separate service, no swagger) in collections-slice.json. Keep this list in sync deliberately; drift-check.mjs fails CI if a baasPath is missing from the live spec.",
+  "baasPaths": [
+    "POST /generate-token",
+    "POST /v1/kyc/customers",
+    "GET /v1/kyc/customers",
+    "GET /v1/kyc/customers/{customerId}",
+    "GET /v1/kyc/customers/phone/{mobile}",
+    "POST /v1/kyc/customers/{customerId}/kyc",
+    "PATCH /v1/kyc/customers/{customerId}/activate",
+    "GET /v1/lms/products",
+    "GET /v1/lms/products/{code}",
+    "POST /v1/lms/loans",
+    "POST /v1/lms/loans/calculate-schedule",
+    "GET /v1/lms/loans/{loanId}",
+    "POST /v1/lms/loans/{loanId}/approve",
+    "POST /v1/lms/loans/{loanId}/disburse",
+    "POST /v1/lms/loans/{loanId}/disburse-to-savings",
+    "GET /v1/lms/loans/{loanId}/schedule",
+    "POST /v1/lms/loans/{loanId}/repayments",
+    "POST /v1/lms/loans/{loanId}/submit-payment",
+    "GET /v1/lms/loans/{loanId}/pay-link",
+    "GET /v1/lms/payment-types",
+    "GET /v1/wms/products",
+    "POST /v1/wms/wallets",
+    "GET /v1/wms/wallets",
+    "GET /v1/wms/wallets/{walletId}",
+    "POST /v1/wms/wallets/{walletId}/approve",
+    "POST /v1/wms/wallets/{walletId}/activate",
+    "GET /v1/wms/wallets/{walletId}/transactions",
+    "POST /v1/wms/wallets/{walletId}/submit-deposit",
+    "POST /v1/wms/wallets/{walletId}/reserve",
+    "POST /v1/wms/transactions/{transactionId}/commit",
+    "POST /v1/wms/transactions/{transactionId}/release"
+  ],
+  "collectionsSlice": [
+    "POST /collection/mobile",
+    "GET /collection/status",
+    "GET /collection/transactions"
+  ]
+}
