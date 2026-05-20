@@ -7,9 +7,13 @@ export interface ServiceConfig {
   secret: string;
 }
 
+export type Mode = "integrate" | "execute" | "both";
+
 export interface Config {
-  baas: ServiceConfig;
+  baas: ServiceConfig | null; // null is fine in integrate-only mode (no live calls)
   gateway: ServiceConfig | null; // optional; collections disabled if absent
+  /** integrate = help build the integration (no live API tools). execute = live tools. both = default. */
+  mode: Mode;
   /** When false (default), money-moving tools are NOT registered at all. */
   enableMoneyMovers: boolean;
   /** Informational label surfaced to the agent. The real environment is fixed by the key. */
@@ -23,13 +27,19 @@ function required(name: string): string {
 }
 
 export function loadConfig(): Config {
+  const mode = (process.env.BRIDGE_MODE as Mode) || "both";
+  const needLiveKeys = mode !== "integrate"; // integrate-only never calls APIs, so keys are optional
+  const haveBaasKeys = Boolean(process.env.BRIDGE_BAAS_KEY_ID && process.env.BRIDGE_BAAS_SECRET);
   const gatewayConfigured = Boolean(process.env.BRIDGE_GATEWAY_KEY_ID && process.env.BRIDGE_GATEWAY_SECRET);
   return {
-    baas: {
-      baseUrl: process.env.BRIDGE_BAAS_URL || "https://api.reli.co.tz",
-      keyId: required("BRIDGE_BAAS_KEY_ID"),
-      secret: required("BRIDGE_BAAS_SECRET"),
-    },
+    mode,
+    baas: (needLiveKeys || haveBaasKeys)
+      ? {
+          baseUrl: process.env.BRIDGE_BAAS_URL || "https://services.finance.reli.co.tz/api",
+          keyId: needLiveKeys ? required("BRIDGE_BAAS_KEY_ID") : process.env.BRIDGE_BAAS_KEY_ID!,
+          secret: needLiveKeys ? required("BRIDGE_BAAS_SECRET") : process.env.BRIDGE_BAAS_SECRET!,
+        }
+      : null,
     gateway: gatewayConfigured
       ? {
           baseUrl: process.env.BRIDGE_GATEWAY_URL || "https://api.reli.co.tz/api",

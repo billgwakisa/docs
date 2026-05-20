@@ -32,12 +32,6 @@
               "concepts/conventions",
               "concepts/errors"
             ]
-          },
-          {
-            "group": "AI agents",
-            "pages": [
-              "mcp"
-            ]
           }
         ]
       },
