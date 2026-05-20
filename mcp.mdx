@@ -1,13 +1,13 @@
 ---
-title: "Bridge MCP server"
-description: "Give your AI agent the Bridge API — safely. Read tools by default, money-movers only when you unlock them."
+title: "x-bridge MCP server"
+description: "Give your AI agent the x-bridge API — safely. Read tools by default, money-movers only when you unlock them."
 icon: "robot"
 ---
 
-The Bridge MCP server lets an AI agent (Claude Code, Cursor, any MCP client) call Bridge directly. Tools are generated from the [API reference](/api-reference/openapi/post-generate-token), so they always match the docs.
+The x-bridge MCP server lets an AI agent (Claude Code, Cursor, any MCP client) call x-bridge directly. Tools are generated from the [API reference](/api-reference/openapi/post-generate-token), so they always match the docs.
 
 <Note>
-Prototype, shipped in the docs repo under `mcp/`. It will graduate to `npx @bridge/mcp`.
+Prototype, shipped in the docs repo under `mcp/`. It will graduate to `npx @x-bridge/mcp`.
 </Note>
 
 ## Safety: you decide at launch, not the agent
@@ -37,7 +37,7 @@ npm run build
 BRIDGE_BAAS_KEY_ID=your-key-id \
 BRIDGE_BAAS_SECRET=your-secret \
 BRIDGE_ENVIRONMENT=sandbox \
-claude mcp add bridge -- node /absolute/path/to/docs/mcp/dist/index.js
+claude mcp add x-bridge -- node /absolute/path/to/docs/mcp/dist/index.js
 ```
 
 ## Cursor (`~/.cursor/mcp.json`)
@@ -45,7 +45,7 @@ claude mcp add bridge -- node /absolute/path/to/docs/mcp/dist/index.js
 ```json
 {
   "mcpServers": {
-    "bridge": {
+    "x-bridge": {
       "command": "node",
       "args": ["/absolute/path/to/docs/mcp/dist/index.js"],
       "env": {
@@ -62,8 +62,8 @@ Add `"BRIDGE_ENABLE_MONEY_MOVERS": "true"` (sandbox only, to start) to let the a
 
 ## Try it
 
-Once connected, ask your agent: *"List the loan products, then onboard a customer named Jane Doe."* With money-movers unlocked in sandbox: *"Originate a 100,000 TZS loan for Jane with an auto-provisioned wallet and disburse it."*
+Once connected, ask your agent: *"List the loan products, then onboard a customer named Jane Doe."* With money-movers unlocked in sandbox: *"Originate a 100,000 TZS loan for Jane with a linked wallet and disburse it."*
 
 <Warning>
-Point it at a **sandbox** key first. Only unlock money-movers against production once you trust the flow. See [Conventions](/concepts/conventions) for the money-unit footgun.
+Point it at a **sandbox** key first. Only unlock money-movers against production once you trust the flow.
 </Warning>

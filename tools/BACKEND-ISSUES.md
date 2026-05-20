@@ -73,6 +73,17 @@ null-check a 200. Consider `404`, or document the 200+null contract. (Docs curre
 
 ---
 
+## Issue 4 — Money-unit inconsistency: normalize (currently HIDDEN from public docs)  [P1]
+
+Loan `principal` / `transactionAmount` are **major units**; wallet amounts (`amountMinor`, balances)
+are **minor units** (cents). A client sending the wrong scale can move 100x — a real incident risk.
+
+Until this is normalized, the money-unit guidance is **intentionally removed from the public docs**
+(commented out in the MDX with `{/* TODO(api-team) */}` markers + softened in `openapi.json`) so we
+don't advertise the inconsistency. **Action:** pick one unit across the whole API (recommend minor
+units everywhere) and migrate. Once consistent, restore the "Money units" section in
+`concepts/conventions.mdx` and the per-field notes in the spec.
+
 ## Not bugs (verified working)
 Auth, `GET` products/payment-types, KYC (dedup→upsert→submit-docs→activate), wallet open/approve/activate,
 loan via `linkWalletId` and standalone, approve, `disburse` / `disburse-to-savings`, schedule.

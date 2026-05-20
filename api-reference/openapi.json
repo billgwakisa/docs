@@ -3,7 +3,7 @@
   "info": {
     "title": "Bridge API",
     "version": "1.0.0",
-    "description": "Bridge is Banking-as-a-Service: launch wallets, lending, and payment collections while a bank/FSP retains custody and compliance. This reference covers the production-proven surface. Get a `keyId`/`secret` from the Dashboard, exchange them at `/generate-token` for a 1-hour Bearer token, then call the product APIs.\n\n**Money units:** WMS amounts are in `amountMinor` (integer cents). LMS loan `principal` and `transactionAmount` are in MAJOR units. Read each field's description before sending money.\n\n**Auth recovery:** tokens expire after ~1h. On a 401, re-call `/generate-token` and retry once."
+    "description": "Bridge is Banking-as-a-Service: launch wallets, lending, and payment collections while a bank/FSP retains custody and compliance. This reference covers the production-proven surface. Get a `keyId`/`secret` from the Dashboard, exchange them at `/generate-token` for a 1-hour Bearer token, then call the product APIs.\n\n**Auth recovery:** tokens expire after ~1h. On a 401, re-call `/generate-token` and retry once."
   },
   "servers": [
     {
@@ -161,7 +161,7 @@
       "post": {
         "tags": ["Lending"],
         "summary": "Originate a loan",
-        "description": "Creates a loan application. Three wallet-linking strategies: (A) no wallet, (B) `linkWalletId` to attach an existing wallet, (C) `createWalletProductCode` to auto-provision a wallet and set up an auto-sweep standing instruction for repayments.\n\n**`principal` is in MAJOR units** (e.g. 100000 = 100,000 TZS), unlike WMS amounts which are minor units.",
+        "description": "Creates a loan application. Three wallet-linking strategies: (A) no wallet, (B) `linkWalletId` to attach an existing wallet, (C) `createWalletProductCode` to auto-provision a wallet and set up an auto-sweep standing instruction for repayments.",
         "requestBody": {
           "required": true,
           "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateLoanRequest" }, "example": { "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "productCode": "PERSONAL_LOAN_001", "principal": 100000, "numberOfRepayments": 3, "repaymentFrequency": "MONTHS", "expectedDisbursementDate": "2026-03-15", "createWalletProductCode": "CSAV", "fspFundId": 1 } } }
@@ -185,7 +185,7 @@
       "get": {
         "tags": ["Lending"],
         "summary": "Get loan",
-        "description": "Documented from the API surface. Note: this response currently reflects core-engine fields (integer `id`, `status.value` like `loanStatusType.active`, `principal` in major units).",
+        "description": "Documented from the API surface. Note: this response currently reflects core-engine fields (integer `id`, `status.value` like `loanStatusType.active`).",
         "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
         "responses": { "200": { "description": "Loan" }, "404": { "$ref": "#/components/responses/NotFound" } }
       }
@@ -230,7 +230,7 @@
       "post": {
         "tags": ["Lending"],
         "summary": "Record a repayment",
-        "description": "Records a repayment your gateway already collected. `transactionAmount` is in MAJOR units. `receiptNumber` acts as your idempotency key.",
+        "description": "Records a repayment your gateway already collected. `receiptNumber` acts as your idempotency key.",
         "parameters": [{ "$ref": "#/components/parameters/LoanId" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RepaymentRequest" }, "example": { "transactionAmount": 35000, "transactionDate": "2026-04-10", "paymentTypeId": 1, "receiptNumber": "MPESA-ABC123XYZ", "note": "Mobile money repayment" } } } },
         "responses": { "200": { "description": "Repayment recorded", "content": { "application/json": { "example": { "status": "repayment-accepted", "loanId": "5c9e2b3c-4d5e-6f7a-8b9c-1d2e3f4a5b6c", "amount": 35000 } } } } }
@@ -284,7 +284,7 @@
       "get": {
         "tags": ["Wallets"],
         "summary": "Get wallet",
-        "description": "Includes `balanceMinor`, status, and any linked loan. Balances are in minor units (cents).",
+        "description": "Includes balance, status, and any linked loan.",
         "parameters": [{ "$ref": "#/components/parameters/WalletId" }],
         "responses": { "200": { "description": "Wallet", "content": { "application/json": { "example": { "id": "a1b2c3d4-0000-0000-0000-000000000000", "customerId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "productCode": "CSAV", "balanceMinor": 500000, "currency": "TZS", "status": "ACTIVE" } } } } }
       }
@@ -302,7 +302,7 @@
       "post": {
         "tags": ["Wallets"],
         "summary": "Submit & verify a wallet deposit",
-        "description": "Bridge verifies the deposit on the gateway before crediting the wallet. Idempotent on `gatewayReference`. `amount` is in MAJOR units.",
+        "description": "Bridge verifies the deposit on the gateway before crediting the wallet. Idempotent on `gatewayReference`.",
         "parameters": [{ "$ref": "#/components/parameters/WalletId" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmitDepositRequest" }, "example": { "gatewayReference": "MPESA-DEF456UVW", "amount": 50000, "fspId": "CLICKPESA", "description": "Deposit via partner gateway" } } } },
         "responses": { "200": { "description": "Verified and credited" } }
@@ -312,7 +312,7 @@
       "post": {
         "tags": ["Wallets"],
         "summary": "Reserve funds (escrow hold)",
-        "description": "Places a hold for the hold-and-capture pattern. `amount` is in MAJOR units. Returns a `transactionId` to commit or release.",
+        "description": "Places a hold for the hold-and-capture pattern. Returns a `transactionId` to commit or release.",
         "parameters": [{ "$ref": "#/components/parameters/WalletId" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReserveRequest" }, "example": { "amount": 15000, "currency": "TZS", "reference": "ORDER-2026-001", "description": "Hold for merchant delivery" } } } },
         "responses": { "200": { "description": "Hold placed", "content": { "application/json": { "example": { "transactionId": "tx-uuid-..." } } } } }
@@ -414,7 +414,7 @@
         "properties": {
           "customerId": { "type": "string", "format": "uuid" },
           "productCode": { "type": "string" },
-          "principal": { "type": "number", "description": "MAJOR units (e.g. 100000 = 100,000 TZS). NOT minor units." },
+          "principal": { "type": "number", "description": "Loan principal amount (e.g. 100000)." },
           "numberOfRepayments": { "type": "integer" },
           "repaymentEvery": { "type": "integer" },
           "repaymentFrequency": { "type": "string", "enum": ["DAYS", "WEEKS", "MONTHS", "YEARS"] },
@@ -428,7 +428,7 @@
       "RepaymentRequest": {
         "type": "object", "required": ["transactionAmount", "transactionDate", "paymentTypeId"],
         "properties": {
-          "transactionAmount": { "type": "number", "description": "MAJOR units." },
+          "transactionAmount": { "type": "number", "description": "Amount." },
           "transactionDate": { "type": "string", "description": "yyyy-MM-dd" },
           "paymentTypeId": { "type": "integer", "description": "From GET /v1/lms/payment-types." },
           "receiptNumber": { "type": "string", "description": "Your unique reference; acts as idempotency key." },
@@ -439,7 +439,7 @@
         "type": "object", "required": ["gatewayReference", "amount"],
         "properties": {
           "gatewayReference": { "type": "string", "description": "Your gateway's transaction reference; idempotency key." },
-          "amount": { "type": "number", "description": "MAJOR units; must match the verified gateway amount." },
+          "amount": { "type": "number", "description": "Amount; must match the verified gateway amount." },
           "fspId": { "type": "string", "example": "CLICKPESA" },
           "note": { "type": "string" }
         }
@@ -452,7 +452,7 @@
         "type": "object", "required": ["gatewayReference", "amount"],
         "properties": {
           "gatewayReference": { "type": "string", "description": "Idempotency key." },
-          "amount": { "type": "number", "description": "MAJOR units." },
+          "amount": { "type": "number", "description": "Amount." },
           "fspId": { "type": "string", "example": "CLICKPESA" },
           "description": { "type": "string" }
         }
@@ -460,7 +460,7 @@
       "ReserveRequest": {
         "type": "object", "required": ["amount", "currency"],
         "properties": {
-          "amount": { "type": "number", "description": "MAJOR units." },
+          "amount": { "type": "number", "description": "Amount." },
           "currency": { "type": "string", "example": "TZS" },
           "reference": { "type": "string", "description": "Your order reference." },
           "description": { "type": "string" }

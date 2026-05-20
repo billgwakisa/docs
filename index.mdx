@@ -32,6 +32,20 @@ Everything below is built around the flows already running in production. Pick a
   </Card>
 </Columns>
 
+## Or build it with your AI agent
+
+Point Claude Code or Cursor at the x-bridge MCP server and build by describing what you want — every tool is generated from this API.
+
+```bash
+claude mcp add x-bridge -- npx -y @x-bridge/mcp
+```
+
+Then just ask: *"Onboard a customer named Jane and disburse a 100,000 TZS loan into her wallet."* Read tools work out of the box; money-moving tools stay locked until you enable them at launch.
+
+<Card title="Set up the MCP server" icon="robot" href="/mcp" horizontal>
+  Install for Claude Code or Cursor, and see the launch-time safety model.
+</Card>
+
 ## How it fits together
 
 - **KYC** is the authoritative customer store. A customer must be **active** before holding wallets or loans.
@@ -43,13 +57,8 @@ Everything below is built around the flows already running in production. Pick a
   How businesses join Bridge, what credentials you get, and sandbox vs production.
 </Card>
 
-## Two things to know before you send money
+## Before you send money
 
-<Columns cols={2}>
-  <Card title="Money units differ" icon="triangle-exclamation" href="/concepts/conventions">
-    Wallet amounts are minor units (cents). Loan `principal` is in major units. Read the field.
-  </Card>
-  <Card title="Tokens expire hourly" icon="key" href="/authentication">
-    On a 401, re-generate the token and retry once. Built into the recipes.
-  </Card>
-</Columns>
+<Card title="Tokens expire hourly" icon="key" href="/authentication" horizontal>
+  Tokens last about an hour. On a 401, re-generate the token and retry once — built into every recipe.
+</Card>

@@ -1,8 +1,8 @@
-# @bridge/mcp
+# @x-bridge/mcp
 
-An MCP server that exposes the **curated Bridge API** to AI agents (Claude Code, Cursor, any MCP client). Tools are generated from `api-reference/openapi.json`, so they stay in sync with the docs.
+An MCP server that exposes the **curated x-bridge API** to AI agents (Claude Code, Cursor, any MCP client). Tools are generated from `api-reference/openapi.json`, so they stay in sync with the docs.
 
-> Prototype. Lives in the docs repo for now; will move to its own npm package (`npx @bridge/mcp`).
+> Prototype. Lives in the docs repo for now; will move to its own npm package (`npx @x-bridge/mcp`).
 
 ## Safety model — launch-time lock
 
@@ -33,11 +33,11 @@ npm run build
 ## Use with Claude Code
 
 ```bash
-claude mcp add bridge -- node /absolute/path/to/docs/mcp/dist/index.js
+claude mcp add x-bridge -- node /absolute/path/to/docs/mcp/dist/index.js
 ```
 With env (sandbox, read-only by default):
 ```bash
-BRIDGE_BAAS_KEY_ID=... BRIDGE_BAAS_SECRET=... claude mcp add bridge -- node /abs/path/docs/mcp/dist/index.js
+BRIDGE_BAAS_KEY_ID=... BRIDGE_BAAS_SECRET=... claude mcp add x-bridge -- node /abs/path/docs/mcp/dist/index.js
 ```
 
 ## Use with Cursor (`~/.cursor/mcp.json`)
@@ -45,7 +45,7 @@ BRIDGE_BAAS_KEY_ID=... BRIDGE_BAAS_SECRET=... claude mcp add bridge -- node /abs
 ```json
 {
   "mcpServers": {
-    "bridge": {
+    "x-bridge": {
       "command": "node",
       "args": ["/absolute/path/to/docs/mcp/dist/index.js"],
       "env": {

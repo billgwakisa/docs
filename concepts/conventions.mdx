@@ -1,24 +1,13 @@
 ---
 title: "Conventions"
-description: "Money units, IDs, idempotency, and environments — read this before sending money."
+description: "IDs, idempotency, environments, and dates."
 icon: "ruler"
 ---
 
-## Money units — read this first
-
-<Warning>
-Amount units are **not uniform** across the API. Sending the wrong scale can move 100x the intended amount.
-</Warning>
-
-| Where | Unit | Example |
-|-------|------|---------|
-| Wallet balances, `amountMinor`, top-ups | **Minor units** (cents) | `500000` = 5,000.00 TZS |
-| Loan `principal`, repayment `transactionAmount` | **Major units** | `100000` = 100,000 TZS |
-| `submit-deposit` / `submit-payment` / `reserve` `amount` | **Major units** | `50000` = 50,000 TZS |
-
-Every money field in the [API reference](/api-reference/openapi/post-generate-token) states its unit. When in doubt, read the field description, not the field name.
-
-> We are standardizing money units across the API. Until then, treat the table above as authoritative.
+{/* TODO(api-team): money-unit guidance is intentionally hidden until the API normalizes
+    amounts. Currently loan `principal`/`transactionAmount` are major units while wallet
+    amounts are minor units (cents) — a 100x footgun. Restore a "Money units" section here
+    once units are consistent. Tracked in tools/BACKEND-ISSUES.md. */}
 
 ## IDs
 

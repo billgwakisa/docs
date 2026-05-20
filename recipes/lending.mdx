@@ -6,9 +6,7 @@ icon: "hand-holding-dollar"
 
 Originate and service loans. Loans can stand alone or link to a wallet that auto-sweeps repayments (see [BNPL](/recipes/bnpl)).
 
-<Warning>
-**Money units:** loan `principal` and repayment `transactionAmount` are in **major units** (`100000` = 100,000 TZS) — not minor units. Sending the wrong scale can disburse 100x. See [Conventions](/concepts/conventions).
-</Warning>
+{/* TODO(api-team): money-unit warning hidden pending normalization. See tools/BACKEND-ISSUES.md */}
 
 <Note>Requires an active customer ([KYC](/recipes/kyc-onboarding)). Bearer token from [`/generate-token`](/authentication); re-token on `401`.</Note>
 
